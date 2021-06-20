@@ -6,7 +6,8 @@ Import("env")
 Import("env_modules")
 
 env_module = env_modules.Clone()
-env_module.Append(CPPPATH=[".", "pylib", "CPython/Include"])
+env_module.Append(CPPPATH=[".", "pylib", "pylib/config", "pylib/include", "CPython/Include", "CPython/Godot"])
+env_module.Append(CPPDEFINES=["GD_PYTHON"])
 
 sources = [
 	"CPython/Python/_warnings.c",
@@ -51,7 +52,7 @@ sources = [
 	"CPython/Python/Python-ast.c",
 	"CPython/Python/pythonrun.c",
 	"CPython/Python/random.c",
-	# "CPython/Python/sigcheck.c",
+#   "CPython/Python/sigcheck.c",
 	"CPython/Python/strdup.c",
 	"CPython/Python/strtod.c",
 	"CPython/Python/structmember.c",
@@ -64,7 +65,7 @@ sources = [
 	"CPython/Parser/firstsets.c",
 	"CPython/Parser/grammar.c",
 	"CPython/Parser/grammar1.c",
-	# "CPython/Parser/intrcheck.c",
+#   "CPython/Parser/intrcheck.c",
 	"CPython/Parser/listnode.c",
 	"CPython/Parser/metagrammar.c",
 	"CPython/Parser/myreadline.c",
@@ -121,7 +122,7 @@ sources = [
 	"CPython/Modules/_io/stringio.c",
 	"CPython/Modules/_io/textio.c",
 	"CPython/Modules/cjkcodecs/multibytecodec.c",
-	"CPython/Modules/main.c",
+#	"CPython/Modules/main.c",
 	"CPython/Modules/getbuildinfo.c",
 	"CPython/Modules/posixmodule.c",
 	"CPython/Modules/arraymodule.c",
@@ -159,15 +160,21 @@ sources = [
 	"CPython/Modules/signalmodule.c",
 	"CPython/Modules/fcntlmodule.c",
 	"CPython/Modules/pydebug.c",
-	"pyimportconfig.c",
-	"pygetpath.c",
-	"_py_file.cpp"
+	"CPython/Config/pyimportconfig.c",
+	"CPython/Config/pygetpath.c",
+	"CPython/Godot/_py_file.cpp",
 ]
 
 if env["platform"] == "osx" or env["platform"] == "iphone":
 	sources += ["CPython/Python/mactoolboxglue.c"]
 
-sources += ["register_types.cpp"]
+sources += [
+	"register_types.cpp",
+	"godot_cpython.cpp",
+]
+if os.path.isfile("pylib/modules/mysticmine_ai.c"):
+	env_module.Append(CPPDEFINES=["MYSTICMINE_AI"])
+	sources += ["pylib/modules/mysticmine_ai.c"]
 
 # Compile as a static library
 lib = env_module.Library("gd_cpython", sources)

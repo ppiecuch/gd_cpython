@@ -174,16 +174,16 @@
 #define HAVE_DIRENT_H 1
 
 /* Define to 1 if you have the <dlfcn.h> header file. */
-#define HAVE_DLFCN_H 1
+/* #define HAVE_DLFCN_H 1 */
 
 /* Define to 1 if you have the `dlopen' function. */
-#define HAVE_DLOPEN 1
+/* #define HAVE_DLOPEN 1 */
 
 /* Define to 1 if you have the `dup2' function. */
 #define HAVE_DUP2 1
 
 /* Defined when any dynamic module loading is enabled. */
-//#define HAVE_DYNAMIC_LOADING 1
+/* #define HAVE_DYNAMIC_LOADING 1 */
 
 /* Define if you have the 'epoll' functions. */
 /* #undef HAVE_EPOLL */
@@ -422,7 +422,7 @@
 /* #undef HAVE_LIBRESOLV */
 
 /* Define to 1 if you have the <libutil.h> header file. */
-//#define HAVE_LIBUTIL_H 1
+/* #define HAVE_LIBUTIL_H 1 */
 
 /* Define if you have the 'link' function. */
 #define HAVE_LINK 1
@@ -1104,7 +1104,7 @@
 /* Define if you want to use the new-style (Openstep, Rhapsody, MacOS) dynamic
  linker (dyld) instead of the old-style (NextStep) dynamic linker (rld).
  Dyld is necessary to support frameworks. */
-#define WITH_DYLD 1
+/* #define WITH_DYLD 1 */
 
 /* Define to 1 if libintl is needed for locale functions. */
 /* #undef WITH_LIBINTL */
@@ -1113,12 +1113,12 @@
  library plus accessory files). */
 // This is also MacOSX. However, it assumes e.g. existance of _NSGetEnviron
 // and other things and thus isn't really suitable for iOS.
-//#define WITH_NEXT_FRAMEWORK 1
+/* #define WITH_NEXT_FRAMEWORK 1 */
 
 /* Define if you want to compile in Python-specific mallocs */
 // Pool size too big by default for iOS? Anyway, maybe not the best
 // thing for embedded systems where memory is low.
-//#define WITH_PYMALLOC 1
+/* #define WITH_PYMALLOC 1 */
 
 /* Define if you want to compile in rudimentary thread support */
 #define WITH_THREAD 1
@@ -1279,14 +1279,12 @@
 // not supported if we build a static library, so just disable them for now.
 
 /* Define to 1 if you have the `fstatvfs' function. */
-//#define HAVE_FSTATVFS 1
+/* #define HAVE_FSTATVFS 1 */
 
 /* Define to 1 if you have the `statvfs' function. */
-//#define HAVE_STATVFS 1
+/* #define HAVE_STATVFS 1 */
 
 /* Define to 1 if you have the `lchown' function. */
-//#define HAVE_LCHOWN 1
+/* #define HAVE_LCHOWN 1 */
 
-/*
-#define SIZEOF_SHORT sizeof(short)
-*/
+/* #define SIZEOF_SHORT sizeof(short) */
