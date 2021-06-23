@@ -360,7 +360,8 @@ int _gd_fputs(const char* buf, PYFILE *f) {
 
 int _gd_getc(PYFILE *f) {
 	if (f) {
-		return f->fa->get_8();
+		const int b = f->fa->get_8();
+		return f->fa->eof_reached() ? EOF : b;
 	}
 	return EOF;
 }

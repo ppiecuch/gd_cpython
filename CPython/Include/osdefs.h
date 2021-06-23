@@ -44,6 +44,11 @@ extern "C" {
 #endif
 #endif
 
+/* Support for Godod res:// */
+#ifdef GD_PYTHON
+#define DELIM ';'
+#endif
+
 /* Search path entry delimiter */
 #ifndef DELIM
 #define DELIM ':'

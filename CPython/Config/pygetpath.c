@@ -8,8 +8,8 @@ extern const char *Py_GetProgramName(void);
 
 static int pathCalculated = 0; 
 static char progPath[MAXPATHLEN+1];
-static char modulePathes[4*MAXPATHLEN+1];
-static char execPrefixPath[2*MAXPATHLEN+1];
+static char modulePathes[1024+1];
+static char execPrefixPath[MAXPATHLEN+1];
 
 static void calcPathes()
 {
@@ -22,13 +22,9 @@ static void calcPathes()
 			break;
 		}
 	}
-	
-	strcpy(modulePathes, progPath);
-	strcat(modulePathes, ":/pylib/lib");
-	strcat(modulePathes, ":/pylib/otherlibs");
-	strcat(modulePathes, ":/");
-	strcpy(execPrefixPath, progPath);
-	strcat(execPrefixPath, "/pylib/exec");
+
+	snprintf(modulePathes, 1024, "%s%c/pylib/lib%cpylib.zip%cres://pylib.zip%cres://%c.", progPath, DELIM, DELIM, DELIM, DELIM, DELIM);
+	snprintf(execPrefixPath, MAXPATHLEN, "%s/pylib/exec", progPath);
 	pathCalculated = 1;
 }
 
@@ -45,7 +41,7 @@ char *
 Py_GetPrefix(void)
 {
 	calcPathes();
-	return "PYPREFIX-NOT-SET";
+	return "/pylib";
 }
 
 char *

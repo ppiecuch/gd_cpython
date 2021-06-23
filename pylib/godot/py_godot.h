@@ -1,18 +1,43 @@
+#pragma once
+
 #include "pybind11/pybind11.h"
 #include "pybind11/embed.h"
 #include "pybind11/operators.h"
 
 #include "core/color.h"
+#include "core/image.h"
+#include "core/reference.h"
 #include "core/version.h"
 #include "core/math/math_funcs.h"
 #include "core/math/vector2.h"
 #include "core/math/vector3.h"
 #include "core/math/rect2.h"
 #include "scene/2d/node_2d.h"
+#include "scene/2d/sprite.h"
+#include "scene/resources/texture.h"
 
 namespace py = pybind11;
 
+struct ImageRef : public Ref<Image> {
+	Image *get() {
+		if (!ptr()) {
+			instance();
+		}
+		return ptr();
+	}
+};
+
+struct ImageTextureRef : public Ref<ImageTexture> {
+	Texture *get() {
+		if (!ptr()) {
+			instance();
+		}
+		return ptr();
+	}
+};
+
 PYBIND11_EMBEDDED_MODULE(gdgame, m) {
+    m.doc() = "Python2 Godot bindings";
 	py::class_<Math>(m, "MathFuncs")
 		.def_static("sin", static_cast<real_t (*)(real_t)>(&Math::sin))
 		.def_static("cos", static_cast<real_t (*)(real_t)>(&Math::cos))
@@ -200,5 +225,42 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def(py::self /= real_t())
 		.attr("__version__") = VERSION_FULL_CONFIG;
 	py::class_<Node2D>(m, "Node2d")
+		.attr("__version__") = VERSION_FULL_CONFIG;
+	py::class_<Image>(m, "Image")
+		.attr("__version__") = VERSION_FULL_CONFIG;
+	py::class_<ImageRef>(m, "ImageRef")
+		.def("get", &ImageRef::get)
+		.attr("__version__") = VERSION_FULL_CONFIG;
+	py::class_<Texture>(m, "Texture")
+		.def("get_width", &Texture::get_width)
+		.def("get_height", &Texture::get_height)
+		.def("get_size", &Texture::get_size)
+		.def("get_rid", &Texture::get_rid)
+		.def("is_pixel_opaque", &Texture::is_pixel_opaque)
+		.def("has_alpha", &Texture::has_alpha)
+		.def("set_flags", &Texture::set_flags)
+		.def("get_flags", &Texture::get_flags)
+		.def("draw", &Texture::draw)
+		.def("draw_rect", &Texture::draw_rect)
+		.def("draw_rect_region", &Texture::draw_rect_region)
+		.def("get_rect_region", &Texture::get_rect_region)
+		.def("get_data", &Texture::get_data)
+		.attr("__version__") = VERSION_FULL_CONFIG;
+	py::class_<ImageTexture>(m, "ImageTexture")
+		.attr("__version__") = VERSION_FULL_CONFIG;
+	py::enum_<Texture::Flags>(m, "TextureFlags")
+		.value("TEXTURE_MIPMAPS", Texture::FLAG_MIPMAPS)
+		.value("TEXTURE_REPEAT", Texture::FLAG_REPEAT)
+		.value("TEXTURE_FILTER", Texture::FLAG_FILTER)
+		.value("TEXTURE_ANISOTROPIC_FILTER", Texture::FLAG_ANISOTROPIC_FILTER)
+		.value("TEXTURE_CONVERT_TO_LINEAR", Texture::FLAG_CONVERT_TO_LINEAR)
+		.value("TEXTURE_VIDEO_SURFACE", Texture::FLAG_VIDEO_SURFACE)
+		.value("TEXTURE_MIRRORED_REPEAT", Texture::FLAG_MIRRORED_REPEAT)
+		.value("TEXTURE_DEFAULT", Texture::FLAGS_DEFAULT)
+		.export_values();
+	py::class_<ImageTextureRef>(m, "ImageTextureRef")
+		.def("get", &ImageTextureRef::get)
+		.attr("__version__") = VERSION_FULL_CONFIG;
+	py::class_<Sprite>(m, "Sprite")
 		.attr("__version__") = VERSION_FULL_CONFIG;
 }

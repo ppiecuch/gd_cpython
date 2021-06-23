@@ -50,7 +50,7 @@ def normcase(s):
 
 def isabs(s):
     """Test whether a path is absolute"""
-    return s.startswith('/')
+    return s.startswith('/') or s.startswith('res://') or s.startswith('user://')
 
 
 # Join pathnames.
@@ -102,6 +102,10 @@ splitext.__doc__ = genericpath._splitext.__doc__
 def splitdrive(p):
     """Split a pathname into drive and path. On Posix, drive is always
     empty."""
+    if p.startswith('res://'):
+        return 'res://', p[5:]
+    if p.startswith('user://'):
+        return 'user://', p[6:]
     return '', p
 
 

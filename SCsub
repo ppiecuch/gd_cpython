@@ -176,6 +176,9 @@ if os.path.isfile("pylib/modules/mysticmine_ai.c"):
 	env_module.Append(CPPDEFINES=["MYSTICMINE_AI"])
 	sources += ["pylib/modules/mysticmine_ai.c"]
 
+# build compressed library
+env_module.Zip("pylib.zip", "CPython/Lib", ZIPROOT="modules/gd_cpython/CPython/Lib")
+
 # Compile as a static library
 lib = env_module.Library("gd_cpython", sources)
 # Add the library as a dependency of the final executable

@@ -51,11 +51,23 @@ CPythonRun::~CPythonRun() {
 	Py_Finalize();
 }
 
+void CPythonRun::run_code(const String& p_python_code) {
+	if (!p_python_code.empty()) {
+		const char *code = p_python_code.utf8().get_data();
+		if (PyRun_SimpleString(code) == -1) {
+			WARN_PRINT("Executing code with errors.");
+		}
+	}
+}
+
 void CPythonRun::run_file(const String& p_python_file) {
 	if (!p_python_file.empty()) {
 		const char *file = p_python_file.utf8().get_data();
 		PYFILE *fp = pyfopen(file, "r");
 		if (fp != nullptr) {
+			if (PyObject *sys_path = PySys_GetObject("path")) {
+				PyList_SetItem(sys_path, 0, PyString_FromString(p_python_file.get_base_dir().utf8().get_data()));
+			}
 			PyRun_SimpleFile(fp, file);
 			PyErr_Clear();
 			pyfclose(fp);
@@ -159,13 +171,34 @@ bool CPythonRun::has_error() {
 void CPythonInstance::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_READY: {
-			if (!_cpython) {
+			if (_cpython.is_null()) {
 				_cpython = Ref<CPythonRun>(memnew(CPythonRun(this)));
 			}
+		} break;
+		case NOTIFICATION_ENTER_TREE: {
+			if (_cpython.is_null()) {
+				_cpython = Ref<CPythonRun>(memnew(CPythonRun(this)));
+			}
+			if (python_autorun) {
+				if (!python_file.empty() && _last_file_run != python_file) {
+					_cpython->run_file(python_file);
+					_last_file_run = python_file;
+				}
+				if (!python_code.empty() && _last_code_run != python_code.md5_text()) {
+					_cpython->run_code(python_code);
+					_last_code_run = python_code.md5_text();
+				}
+				if (!python_init_func.empty()) {
+					// _cpython->call_function();
+				}
+			}
+			set_process(true);
 		} break;
 		case NOTIFICATION_PROCESS: {
 			if (_running) {
 				// call tick function
+				if (!python_tick_func.empty()) {
+				}
 			}
 		}
 	}
@@ -173,6 +206,7 @@ void CPythonInstance::_notification(int p_what) {
 
 void CPythonInstance::set_python_code(const String &code) {
 	python_code = code;
+	_dirty = true;
 	emit_signal("python_code_changed");
 }
 
@@ -182,9 +216,7 @@ String CPythonInstance::get_python_code() const {
 
 void CPythonInstance::set_python_file(const String &path) {
 	python_file = path;
-	if (python_autorun) {
-
-	}
+	_dirty = true;
 	emit_signal("python_file_changed");
 }
 
@@ -240,6 +272,7 @@ void CPythonInstance::_bind_methods() {
 
 CPythonInstance::CPythonInstance() {
 	_running = false;
+	_dirty = false;
 	python_init_func = "_gd_init";
 	python_tick_func = "_gd_tick";
 	python_autorun = false;

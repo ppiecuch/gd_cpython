@@ -47,7 +47,7 @@ extern const char *PyWin_DLLVersionString;
 #endif
 
 PyObject *
-PySys_GetObject(char *name)
+PySys_GetObject(const char *name)
 {
     PyThreadState *tstate = PyThreadState_GET();
     PyObject *sd = tstate->interp->sysdict;
@@ -57,7 +57,7 @@ PySys_GetObject(char *name)
 }
 
 PYFILE *
-PySys_GetFile(char *name, PYFILE *def)
+PySys_GetFile(const char *name, PYFILE *def)
 {
     PYFILE *fp = NULL;
     PyObject *v = PySys_GetObject(name);
@@ -69,7 +69,7 @@ PySys_GetFile(char *name, PYFILE *def)
 }
 
 int
-PySys_SetObject(char *name, PyObject *v)
+PySys_SetObject(const char *name, PyObject *v)
 {
     PyThreadState *tstate = PyThreadState_GET();
     PyObject *sd = tstate->interp->sysdict;
