@@ -332,7 +332,7 @@ Pdata_popList(Pdata *self, int start)
 
 typedef struct Picklerobject {
     PyObject_HEAD
-    FILE *fp;
+    PYFILE *fp;
     PyObject *write;
     PyObject *file;
     PyObject *memo;
@@ -363,7 +363,7 @@ static PyTypeObject Picklertype;
 
 typedef struct Unpicklerobject {
     PyObject_HEAD
-    FILE *fp;
+    PYFILE *fp;
     PyObject *file;
     PyObject *readline;
     PyObject *read;
@@ -440,7 +440,7 @@ write_file(Picklerobject *self, const char *s, Py_ssize_t  n)
 
     PyFile_IncUseCount((PyFileObject *)self->file);
     Py_BEGIN_ALLOW_THREADS
-    nbyteswritten = fwrite(s, sizeof(char), n, self->fp);
+    nbyteswritten = pyfwrite(s, sizeof(char), n, self->fp);
     Py_END_ALLOW_THREADS
     PyFile_DecUseCount((PyFileObject *)self->file);
     if (nbyteswritten != (size_t)n) {
@@ -553,11 +553,11 @@ read_file(Unpicklerobject *self, char **s, Py_ssize_t n)
 
     PyFile_IncUseCount((PyFileObject *)self->file);
     Py_BEGIN_ALLOW_THREADS
-    nbytesread = fread(self->buf, sizeof(char), n, self->fp);
+    nbytesread = pyfread(self->buf, sizeof(char), n, self->fp);
     Py_END_ALLOW_THREADS
     PyFile_DecUseCount((PyFileObject *)self->file);
     if (nbytesread != (size_t)n) {
-        if (feof(self->fp)) {
+        if (pyfeof(self->fp)) {
             PyErr_SetNone(PyExc_EOFError);
             return -1;
         }
@@ -590,8 +590,8 @@ readline_file(Unpicklerobject *self, char **s)
         int bigger;
         char *newbuf;
         for (; i < (self->buf_size - 1); i++) {
-            if (feof(self->fp) ||
-                (self->buf[i] = getc(self->fp)) == '\n') {
+            if (pyfeof(self->fp) ||
+                (self->buf[i] = pygetc(self->fp)) == '\n') {
                 self->buf[i + 1] = '\0';
                 *s = self->buf;
                 return i + 1;

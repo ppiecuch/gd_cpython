@@ -4,7 +4,7 @@ char *PYTHONCASEOK = 0;
 #include <stdlib.h>
 
 
-int __putenv(const char *v)
+int __putenv(char *v)
 {
     if (strcmp(v, "PYTHONCASEOK") == 0) {
         if(PYTHONCASEOK) free(PYTHONCASEOK);

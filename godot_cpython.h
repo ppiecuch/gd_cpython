@@ -35,6 +35,9 @@ class CPythonInstance : public Node2D {
 	bool python_autorun;
 	String python_init_func;
 	String python_tick_func;
+	String python_event_func;
+	int debug_level;
+	int verboe_level;
 
 	Ref<CPythonRun> _cpython;
 	bool _running;
@@ -57,6 +60,12 @@ public:
 	String get_init_func() const;
 	void set_tick_func(const String &func);
 	String get_tick_func() const;
+	void set_event_func(const String &func);
+	String get_event_func() const;
+	void set_debug_level(const int level);
+	int get_debug_level() const;
+	void set_verbose_level(const int level);
+	int get_verbose_level() const;
 
 	CPythonInstance();
 };

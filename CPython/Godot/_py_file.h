@@ -20,6 +20,9 @@ extern "C" {
 
 typedef struct PYFILE PYFILE;
 
+int _gd_chdir(const char* dir);
+char *_gd_getcwd(char *buf, int size);
+
 int _gd_open(const char* name, int flags, ...);
 int _gd_close(int fd);
 int _gd_lseek(int fd, off_t offset, int whence);
@@ -56,6 +59,9 @@ ssize_t _gd_ffilesize(PYFILE *f);
 PYFILE *_gd_stderr();
 PYFILE *_gd_stdin();
 PYFILE *_gd_stdout();
+
+#define pychdir    _gd_chdir
+#define pygetcwd   _gd_getcwd
 
 #define pyopen     _gd_open
 #define pyclose    _gd_close
@@ -98,6 +104,9 @@ PYFILE *_gd_stdout();
 #if 0
 
 typedef FILE PYFILE;
+
+#define pychdir    chdir
+#define pygetcwd   getcwd
 
 #define pyopen     open
 #define pyclose    close

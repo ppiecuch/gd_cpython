@@ -109,6 +109,15 @@ def splitdrive(p):
     return '', p
 
 
+def joindrive(d, p):
+    """Append drive to the pathname and cleanup a new path."""
+    if d == '':
+        return p
+    if d.endswith('/') and p.startswith('/'): # remove multiply //
+        return d + p[1:]
+    return d + p
+
+
 # Return the tail (basename) part of a path, same as split(path)[1].
 
 def basename(p):
@@ -259,11 +268,14 @@ def expanduser(path):
     if i < 0:
         i = len(path)
     if i == 1:
-        if 'HOME' not in os.environ:
+        if 'VHOME' in os.environ:
+            uservol = os.environ['VHOME']
+            return uservol + (path[2:] or "")
+        elif 'HOME' in os.environ:
+            userhome = os.environ['HOME']
+        else:
             import pwd
             userhome = pwd.getpwuid(os.getuid()).pw_dir
-        else:
-            userhome = os.environ['HOME']
     else:
         import pwd
         try:
@@ -316,9 +328,12 @@ def expandvars(path):
 def normpath(path):
     """Normalize path, eliminating double slashes, etc."""
     # Preserve unicode (if path is unicode)
+    (vol, path) = splitdrive(path)
     slash, dot = (u'/', u'.') if isinstance(path, unicode) else ('/', '.')
     if path == '':
-        return dot
+        if vol == '':
+            return dot
+        return vol
     initial_slashes = path.startswith('/')
     # POSIX allows one or two initial slashes, but treats three or more
     # as single slash.
@@ -339,7 +354,9 @@ def normpath(path):
     path = slash.join(comps)
     if initial_slashes:
         path = slash*initial_slashes + path
-    return path or dot
+    if path:
+        return joindrive(vol, path)
+    return dot
 
 
 def abspath(path):
@@ -359,6 +376,7 @@ def abspath(path):
 def realpath(filename):
     """Return the canonical path of the specified filename, eliminating any
 symbolic links encountered in the path."""
+    (vol, filename) = splitdrive(filename)
     if isabs(filename):
         bits = ['/'] + filename.split('/')[1:]
     else:
@@ -371,12 +389,12 @@ symbolic links encountered in the path."""
             resolved = _resolve_link(component)
             if resolved is None:
                 # Infinite loop -- return original component + rest of the path
-                return abspath(join(*([component] + bits[i:])))
+                return abspath(joindrive(vol, join(*([component] + bits[i:]))))
             else:
                 newpath = join(*([resolved] + bits[i:]))
-                return realpath(newpath)
+                return realpath(joindrive(vol, newpath))
 
-    return abspath(filename)
+    return abspath(joindrive(vol, filename))
 
 
 def _resolve_link(path):

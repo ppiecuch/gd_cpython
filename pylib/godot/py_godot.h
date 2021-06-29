@@ -3,11 +3,13 @@
 #include "pybind11/pybind11.h"
 #include "pybind11/embed.h"
 #include "pybind11/operators.h"
+#include "pybind11/stl.h"
 
 #include "core/color.h"
 #include "core/image.h"
 #include "core/reference.h"
 #include "core/version.h"
+#include "core/os/keyboard.h"
 #include "core/math/math_funcs.h"
 #include "core/math/vector2.h"
 #include "core/math/vector3.h"
@@ -15,124 +17,224 @@
 #include "scene/2d/node_2d.h"
 #include "scene/2d/sprite.h"
 #include "scene/resources/texture.h"
+#include "scene/resources/font.h"
+
+#include <iostream>
+#include <string>
+#include <tuple>
 
 namespace py = pybind11;
 
-struct ImageRef : public Ref<Image> {
-	Image *get() {
-		if (!ptr()) {
-			instance();
-		}
-		return ptr();
+// Wrapper around Image/Texture/Sprite object
+struct GdSurface {
+	GdSurface() { }
+	GdSurface convert_alpha() { return GdSurface(); }
+	int get_width() const { return 1; }
+	int get_height() const { return 1; }
+	void fill(const py::tuple &color) {
+	}
+	void blit(const GdSurface &source, const py::tuple &dest) {
+	}
+	void blit_area(const GdSurface &source, const py::tuple &dest, const std::vector<real_t> &area) {
 	}
 };
 
-struct ImageTextureRef : public Ref<ImageTexture> {
-	Texture *get() {
-		if (!ptr()) {
-			instance();
-		}
-		return ptr();
+// Wrapper around Bitmap or Dynamic font
+struct GdFont {
+	Font *font = nullptr;
+	GdFont(const std::string &filename, int size) {
+		// create font dependeing on extension
 	}
+	~GdFont() {
+		if (font) {
+			memdelete(font);
+		}
+	}
+	GdSurface render(const std::string &text, bool alias, const py::tuple &color) { return GdSurface(); }
 };
+
+// Wrapper around Godot sound
+struct GdSound {
+	GdSound(const std::string &filename) { }
+	void set_volume(real_t vol) { }
+	void play(bool loop) { }
+};
+
+// Wrapper around Godot events
+struct GdEvent {
+	GdEvent() { }
+};
+
+namespace utils {
+	void print_dict(py::dict dict) {
+		for (auto item : dict)
+			std::cout
+				<< "key=" << std::string(py::str(item.first)) << ", "
+				<< "value=" << std::string(py::str(item.second)) << std::endl;
+	}
+
+	py::str get_text(const py::str &s) {
+		return s;
+	}
+} // utils
+
+namespace event {
+	py::list get() {
+		return py::list();
+	}
+	void set_grab(bool grab) {
+	}
+} // event
+
+namespace image {
+	GdSurface load(const std::string &filename) {
+		return GdSurface();
+	}
+} // image
+
+namespace display {
+	void set_caption(const std::string &caption) { }
+	GdSurface get_surface() { return GdSurface(); }
+	void flip() { }
+} // display
+
+// gdgame:
+//  +--core
+//     +-Vector2
+//     +-Vector3
+//     +-Rect2
+//     +-Rect2i
+//  +--utils
+//  +--math
+//  +--locals
+//  +--mouse
+//  +--joystick
+//  +--event
+//  +--display
+//  +--image
+//  +--draw
+//  +--time
+//  +--mixer
+//  +--font
+//
 
 PYBIND11_EMBEDDED_MODULE(gdgame, m) {
-    m.doc() = "Python2 Godot bindings";
-	py::class_<Math>(m, "MathFuncs")
-		.def_static("sin", static_cast<real_t (*)(real_t)>(&Math::sin))
-		.def_static("cos", static_cast<real_t (*)(real_t)>(&Math::cos))
-		.def_static("tan", static_cast<real_t (*)(real_t)>(&Math::tan))
-		.def_static("sinh", static_cast<real_t (*)(real_t)>(&Math::sinh))
-		.def_static("sinc", static_cast<real_t (*)(real_t)>(&Math::sinc))
-		.def_static("sincn", static_cast<real_t (*)(real_t)>(&Math::sincn))
-		.def_static("cosh", static_cast<real_t (*)(real_t)>(&Math::cosh))
-		.def_static("tanh", static_cast<real_t (*)(real_t)>(&Math::tanh))
-		.def_static("asin", static_cast<real_t (*)(real_t)>(&Math::asin))
-		.def_static("acos", static_cast<real_t (*)(real_t)>(&Math::acos))
-		.def_static("atan", static_cast<real_t (*)(real_t)>(&Math::atan))
-		.def_static("atan2", static_cast<real_t (*)(real_t, real_t)>(&Math::atan2))
-		.def_static("sqrt", static_cast<real_t (*)(real_t)>(&Math::sqrt))
-		.def_static("fmod", static_cast<real_t (*)(real_t, real_t)>(&Math::fmod))
-		.def_static("floor", static_cast<real_t (*)(real_t)>(&Math::floor))
-		.def_static("ceil", static_cast<real_t (*)(real_t)>(&Math::ceil))
-		.def_static("pow", static_cast<real_t (*)(real_t, real_t)>(&Math::pow))
-		.def_static("log", static_cast<real_t (*)(real_t)>(&Math::log))
-		.def_static("log10", static_cast<real_t (*)(real_t)>(&Math::log10))
-		.def_static("exp", static_cast<real_t (*)(real_t)>(&Math::exp))
-		.def_static("is_nan", static_cast<bool (*)(real_t)>(&Math::is_nan))
-		.def_static("is_inf", static_cast<bool (*)(real_t)>(&Math::is_inf))
-		.def_static("abs", static_cast<real_t (*)(real_t)>(&Math::abs))
-		.def_static("abs", static_cast<int (*)(int)>(&Math::abs))
-		.def_static("fposmod", static_cast<real_t (*)(real_t, real_t)>(&Math::fposmod))
-		.def_static("posmod", static_cast<int64_t (*)(int64_t, int64_t)>(&Math::posmod))
-		.def_static("deg2rad", static_cast<real_t (*)(real_t)>(&Math::deg2rad))
-		.def_static("rad2deg", static_cast<real_t (*)(real_t)>(&Math::rad2deg))
-		.def_static("lerp", static_cast<real_t (*)(real_t, real_t, real_t)>(&Math::lerp))
-		.def_static("lerp_angle", static_cast<real_t (*)(real_t, real_t, real_t)>(&Math::lerp_angle))
-		.def_static("inverse_lerp", static_cast<real_t (*)(real_t, real_t, real_t)>(&Math::lerp_angle))
-		.def_static("range_lerp", static_cast<real_t (*)(real_t, real_t, real_t, real_t, real_t)>(&Math::range_lerp))
-		.def_static("smoothstep", static_cast<real_t (*)(real_t, real_t, real_t)>(&Math::smoothstep))
-		.def_static("move_toward", static_cast<real_t (*)(real_t, real_t, real_t)>(&Math::move_toward))
-		.def_static("linear2db", static_cast<real_t (*)(real_t)>(&Math::linear2db))
-		.def_static("db2linear", static_cast<real_t (*)(real_t)>(&Math::linear2db))
-		.def_static("round", static_cast<real_t (*)(real_t)>(&Math::round))
-		.def_static("wrapi", &Math::wrapi)
-		.def_static("wrapf", static_cast<real_t (*)(real_t, real_t, real_t)>(&Math::wrapf))
-		.def_static("ease", &Math::ease)
-		.def_static("step_decimals", &Math::step_decimals)
-		.def_static("range_step_decimals", &Math::range_step_decimals)
-		.def_static("stepify", &Math::stepify)
-		.def_static("dectime", &Math::dectime)
-		.def_static("larger_prime", &Math::larger_prime)
-		.def_static("seed", &Math::seed)
-		.def_static("randomize", &Math::seed)
-		.def_static("rand_from_seed", &Math::rand_from_seed)
-		.def_static("rand", &Math::rand)
-		.def_static("randd", &Math::randd)
-		.def_static("randf", &Math::randf)
-		.def_static("random", static_cast<real_t (*)(real_t, real_t)>(&Math::random))
-		.def_static("random", static_cast<real_t (*)(int, int)>(&Math::random))
-		.def_static("is_equal_approx_ratio", static_cast<bool (*)(real_t, real_t, real_t, real_t)>(&Math::is_equal_approx_ratio))
-		.def_static("is_equal_approx", static_cast<bool (*)(real_t, real_t)>(&Math::is_equal_approx))
-		.def_static("is_equal_approx", static_cast<bool (*)(real_t, real_t, real_t)>(&Math::is_equal_approx))
-		.def_static("is_zero_approx", static_cast<bool (*)(real_t)>(&Math::is_zero_approx))
-		.def_static("absf", &Math::absf)
-		.def_static("absd", &Math::absd)
-		.def_static("fast_ftoi", &Math::fast_ftoi)
-		.def_static("halfbits_to_floatbits", &Math::halfbits_to_floatbits)
-		.def_static("halfptr_to_float", &Math::halfptr_to_float)
-		.def_static("half_to_float", &Math::half_to_float)
-		.def_static("make_half_float", &Math::make_half_float)
-		.def_static("snap_scalar", &Math::snap_scalar)
-		.def_static("snap_scalar_separation", &Math::snap_scalar_separation)
-		.def_static("map", &Math::map)
-		.attr("__version__") = VERSION_FULL_CONFIG;
-	py::class_<Vector2>(m, "Vector2")
+    m.doc() = "Godot bindings";
+	// gdgame
+	m.def("init", []() { });
+	m.def("quit", []() { });
+	// gdgame.utils
+	py::module m_utils = m.def_submodule("utils", "gdgame module with different utilities.");
+	m_utils.def("get_text", &utils::get_text);
+	m_utils.def("print_dict", &utils::print_dict);
+	// gdgame.math
+	py::module m_math = m.def_submodule("math", "gdgame module with math definitions.");
+	m_math.def("sin", static_cast<real_t (*)(real_t)>(&Math::sin));
+	m_math.def("cos", static_cast<real_t (*)(real_t)>(&Math::cos));
+	m_math.def("tan", static_cast<real_t (*)(real_t)>(&Math::tan));
+	m_math.def("sinh", static_cast<real_t (*)(real_t)>(&Math::sinh));
+	m_math.def("sinc", static_cast<real_t (*)(real_t)>(&Math::sinc));
+	m_math.def("sincn", static_cast<real_t (*)(real_t)>(&Math::sincn));
+	m_math.def("cosh", static_cast<real_t (*)(real_t)>(&Math::cosh));
+	m_math.def("tanh", static_cast<real_t (*)(real_t)>(&Math::tanh));
+	m_math.def("asin", static_cast<real_t (*)(real_t)>(&Math::asin));
+	m_math.def("acos", static_cast<real_t (*)(real_t)>(&Math::acos));
+	m_math.def("atan", static_cast<real_t (*)(real_t)>(&Math::atan));
+	m_math.def("atan2", static_cast<real_t (*)(real_t, real_t)>(&Math::atan2));
+	m_math.def("sqrt", static_cast<real_t (*)(real_t)>(&Math::sqrt));
+	m_math.def("fmod", static_cast<real_t (*)(real_t, real_t)>(&Math::fmod));
+	m_math.def("floor", static_cast<real_t (*)(real_t)>(&Math::floor));
+	m_math.def("ceil", static_cast<real_t (*)(real_t)>(&Math::ceil));
+	m_math.def("pow", static_cast<real_t (*)(real_t, real_t)>(&Math::pow));
+	m_math.def("log", static_cast<real_t (*)(real_t)>(&Math::log));
+	m_math.def("log10", static_cast<real_t (*)(real_t)>(&Math::log10));
+	m_math.def("exp", static_cast<real_t (*)(real_t)>(&Math::exp));
+	m_math.def("is_nan", static_cast<bool (*)(real_t)>(&Math::is_nan));
+	m_math.def("is_inf", static_cast<bool (*)(real_t)>(&Math::is_inf));
+	m_math.def("abs", static_cast<real_t (*)(real_t)>(&Math::abs));
+	m_math.def("abs", static_cast<int (*)(int)>(&Math::abs));
+	m_math.def("fposmod", static_cast<real_t (*)(real_t, real_t)>(&Math::fposmod));
+	m_math.def("posmod", static_cast<int64_t (*)(int64_t, int64_t)>(&Math::posmod));
+	m_math.def("deg2rad", static_cast<real_t (*)(real_t)>(&Math::deg2rad));
+	m_math.def("rad2deg", static_cast<real_t (*)(real_t)>(&Math::rad2deg));
+	m_math.def("lerp", static_cast<real_t (*)(real_t, real_t, real_t)>(&Math::lerp));
+	m_math.def("lerp_angle", static_cast<real_t (*)(real_t, real_t, real_t)>(&Math::lerp_angle));
+	m_math.def("inverse_lerp", static_cast<real_t (*)(real_t, real_t, real_t)>(&Math::lerp_angle));
+	m_math.def("range_lerp", static_cast<real_t (*)(real_t, real_t, real_t, real_t, real_t)>(&Math::range_lerp));
+	m_math.def("smoothstep", static_cast<real_t (*)(real_t, real_t, real_t)>(&Math::smoothstep));
+	m_math.def("move_toward", static_cast<real_t (*)(real_t, real_t, real_t)>(&Math::move_toward));
+	m_math.def("linear2db", static_cast<real_t (*)(real_t)>(&Math::linear2db));
+	m_math.def("db2linear", static_cast<real_t (*)(real_t)>(&Math::linear2db));
+	m_math.def("round", static_cast<real_t (*)(real_t)>(&Math::round));
+	m_math.def("wrapi", &Math::wrapi);
+	m_math.def("wrapf", static_cast<real_t (*)(real_t, real_t, real_t)>(&Math::wrapf));
+	m_math.def("ease", &Math::ease);
+	m_math.def("step_decimals", &Math::step_decimals);
+	m_math.def("range_step_decimals", &Math::range_step_decimals);
+	m_math.def("stepify", &Math::stepify);
+	m_math.def("dectime", &Math::dectime);
+	m_math.def("larger_prime", &Math::larger_prime);
+	m_math.def("seed", &Math::seed);
+	m_math.def("randomize", &Math::seed);
+	m_math.def("rand_from_seed", &Math::rand_from_seed);
+	m_math.def("rand", &Math::rand);
+	m_math.def("randd", &Math::randd);
+	m_math.def("randf", &Math::randf);
+	m_math.def("random", static_cast<real_t (*)(real_t, real_t)>(&Math::random));
+	m_math.def("random", static_cast<real_t (*)(int, int)>(&Math::random));
+	m_math.def("is_equal_approx_ratio", static_cast<bool (*)(real_t, real_t, real_t, real_t)>(&Math::is_equal_approx_ratio));
+	m_math.def("is_equal_approx", static_cast<bool (*)(real_t, real_t)>(&Math::is_equal_approx));
+	m_math.def("is_equal_approx", static_cast<bool (*)(real_t, real_t, real_t)>(&Math::is_equal_approx));
+	m_math.def("is_zero_approx", static_cast<bool (*)(real_t)>(&Math::is_zero_approx));
+	m_math.def("absf", &Math::absf);
+	m_math.def("absd", &Math::absd);
+	m_math.def("fast_ftoi", &Math::fast_ftoi);
+	m_math.def("halfbits_to_floatbits", &Math::halfbits_to_floatbits);
+	m_math.def("halfptr_to_float", &Math::halfptr_to_float);
+	m_math.def("half_to_float", &Math::half_to_float);
+	m_math.def("make_half_float", &Math::make_half_float);
+	m_math.def("snap_scalar", &Math::snap_scalar);
+	m_math.def("snap_scalar_separation", &Math::snap_scalar_separation);
+	m_math.def("map", &Math::map);
+	// gdgame.core
+	py::module m_core = m.def_submodule("core", "gdgame module with Godot core definitions.");
+	py::class_<Vector2>(m_core, "Vector2")
 		.def(py::init<real_t, real_t>())
+		.def_readwrite("x", &Vector2::x)
+		.def_readwrite("y", &Vector2::y)
 		.def(py::self + py::self)
 		.def(py::self += py::self)
 		.def(py::self *= real_t())
-		.def(real_t() * py::self)
+		.def(py::self - py::self)
 		.def(py::self * real_t())
+		.def(py::self / real_t())
 		.def(-py::self)
+		.def("get_tuple", [](const Vector2 &v) { return std::make_tuple (v.x,v.y);})
 		.def("__repr__", [](const Vector2 &v) { return String(v);})
 		.attr("__version__") = VERSION_FULL_CONFIG;
-	py::class_<Vector3>(m, "Vector3")
+	py::class_<Vector3>(m_core, "Vector3")
 		.def(py::init<real_t, real_t, real_t>())
+		.def_readwrite("x", &Vector3::x)
+		.def_readwrite("y", &Vector3::y)
+		.def_readwrite("z", &Vector3::z)
 		.def(py::self + py::self)
 		.def(py::self += py::self)
 		.def(py::self *= real_t())
-		.def(real_t() * py::self)
+		.def(py::self - py::self)
 		.def(py::self * real_t())
+		.def(py::self / real_t())
 		.def(-py::self)
+		.def("get_tuple", [](const Vector3 &v) { return std::make_tuple (v.x,v.y, v.z);})
 		.def("__repr__", [](const Vector3 &v) { return String(v);})
 		.attr("__version__") = VERSION_FULL_CONFIG;
-	py::class_<Rect2>(m, "Rect2")
+	py::class_<Rect2>(m_core, "Rect2")
 		.def(py::init<real_t, real_t, real_t, real_t>())
 		.def("get_position", &Rect2::get_position)
 		.def("set_position", &Rect2::set_position)
+		.def_property("pos", &Rect2::get_position, &Rect2::set_position)
 		.def("get_size", &Rect2::get_size)
 		.def("set_size", &Rect2::set_size)
+		.def_property("size", &Rect2::get_size, &Rect2::set_size)
 		.def("get_area", &Rect2::get_area)
 		.def("get_center", &Rect2::get_center)
 		.def("interpolate", &Rect2::interpolate)
@@ -156,14 +258,17 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def("move_by", &Rect2::move_by)
 		.def(py::self == py::self)
 		.def(py::self != py::self)
-		.def("__repr__", [](const Rect2 &v) { return String(v);})
+		.def("from_tuple", [](const Rect2 &rc, const py::tuple &args) { return Rect2();})
+		.def("__repr__", [](const Rect2 &rc) { return String(rc);})
 		.attr("__version__") = VERSION_FULL_CONFIG;
-	py::class_<Rect2i>(m, "Rect2i")
+	py::class_<Rect2i>(m_core, "Rect2i")
 		.def(py::init<real_t, real_t, real_t, real_t>())
 		.def("get_position", &Rect2i::get_position)
 		.def("set_position", &Rect2i::set_position)
+		.def_property("pos", &Rect2i::get_position, &Rect2i::set_position)
 		.def("get_size", &Rect2i::get_size)
 		.def("set_size", &Rect2i::set_size)
+		.def_property("size", &Rect2i::get_size, &Rect2i::set_size)
 		.def("get_area", &Rect2i::get_area)
 		.def("intersects", &Rect2i::intersects)
 		.def("encloses", &Rect2i::encloses)
@@ -178,9 +283,10 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def("expand_to", &Rect2i::expand_to)
 		.def(py::self == py::self)
 		.def(py::self != py::self)
-		.def("__repr__", [](const Rect2i &v) { return String(v);})
+		.def("from_tuple", [](const Rect2i &rc, const py::tuple &args) { return Rect2();})
+		.def("__repr__", [](const Rect2i &rc) { return String(rc);})
 		.attr("__version__") = VERSION_FULL_CONFIG;
-	py::class_<Color>(m, "Color")
+	py::class_<Color>(m_core, "Color")
         .def(py::init<float, float, float, float>())
 		.def("to_rgba32", &Color::to_rgba32)
 		.def("to_argb32", &Color::to_argb32)
@@ -223,44 +329,116 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def(py::self < py::self)
 		.def(py::self *= real_t())
 		.def(py::self /= real_t())
+		.def("__repr__", [](const Color &c) { return String(c);})
 		.attr("__version__") = VERSION_FULL_CONFIG;
-	py::class_<Node2D>(m, "Node2d")
+	py::class_<GdSurface>(m, "Surface")
+		.def("convert_alpha", &GdSurface::convert_alpha)
+		.def("get_width", &GdSurface::get_width)
+		.def("get_height", &GdSurface::get_height)
+		.def("fill", &GdSurface::fill)
+		.def("blit", &GdSurface::blit)
+		.def("blit", &GdSurface::blit_area)
 		.attr("__version__") = VERSION_FULL_CONFIG;
-	py::class_<Image>(m, "Image")
+	py::module m_locals = m.def_submodule("locals", "Module contains various constants used by gdgame.");
+	m_locals.attr("K_SPACE") = py::int_(int(KEY_SPACE));
+	m_locals.attr("K_ESCAPE") = py::int_(int(KEY_ESCAPE));
+	m_locals.attr("K_RETURN") = py::int_(int(KEY_ENTER));
+	m_locals.attr("K_KP_ENTER") = py::int_(int(KEY_KP_ENTER));
+	m_locals.attr("K_LEFT") = py::int_(int(KEY_LEFT));
+	m_locals.attr("K_RIGHT") = py::int_(int(KEY_RIGHT));
+	m_locals.attr("K_UP") = py::int_(int(KEY_UP));
+	m_locals.attr("K_DOWN") = py::int_(int(KEY_DOWN));
+	m_locals.attr("K_PAGEUP") = py::int_(int(KEY_PAGEUP));
+	m_locals.attr("K_PAGEDOWN") = py::int_(int(KEY_PAGEDOWN));
+	m_locals.attr("K_a") = py::int_(int(KEY_A));
+	m_locals.attr("K_b") = py::int_(int(KEY_B));
+	m_locals.attr("K_c") = py::int_(int(KEY_C));
+	m_locals.attr("K_d") = py::int_(int(KEY_D));
+	m_locals.attr("K_e") = py::int_(int(KEY_E));
+	m_locals.attr("K_f") = py::int_(int(KEY_F));
+	m_locals.attr("K_g") = py::int_(int(KEY_G));
+	m_locals.attr("K_h") = py::int_(int(KEY_H));
+	m_locals.attr("K_i") = py::int_(int(KEY_I));
+	m_locals.attr("K_j") = py::int_(int(KEY_J));
+	m_locals.attr("K_k") = py::int_(int(KEY_K));
+	m_locals.attr("K_l") = py::int_(int(KEY_L));
+	m_locals.attr("K_m") = py::int_(int(KEY_M));
+	m_locals.attr("K_n") = py::int_(int(KEY_N));
+	m_locals.attr("K_o") = py::int_(int(KEY_O));
+	m_locals.attr("K_p") = py::int_(int(KEY_P));
+	m_locals.attr("K_q") = py::int_(int(KEY_Q));
+	m_locals.attr("K_r") = py::int_(int(KEY_R));
+	m_locals.attr("K_s") = py::int_(int(KEY_S));
+	m_locals.attr("K_t") = py::int_(int(KEY_T));
+	m_locals.attr("K_y") = py::int_(int(KEY_Y));
+	m_locals.attr("K_0") = py::int_(int(KEY_0));
+	m_locals.attr("K_1") = py::int_(int(KEY_1));
+	m_locals.attr("K_2") = py::int_(int(KEY_2));
+	m_locals.attr("K_3") = py::int_(int(KEY_3));
+	m_locals.attr("K_4") = py::int_(int(KEY_4));
+	m_locals.attr("K_5") = py::int_(int(KEY_5));
+	m_locals.attr("K_6") = py::int_(int(KEY_6));
+	m_locals.attr("K_7") = py::int_(int(KEY_7));
+	m_locals.attr("K_8") = py::int_(int(KEY_8));
+	m_locals.attr("K_9") = py::int_(int(KEY_9));
+	m_locals.attr("K_F1") = py::int_(int(KEY_F1));
+	m_locals.attr("K_F2") = py::int_(int(KEY_F2));
+	m_locals.attr("K_F3") = py::int_(int(KEY_F3));
+	m_locals.attr("K_F4") = py::int_(int(KEY_F4));
+	m_locals.attr("K_F5") = py::int_(int(KEY_F5));
+	m_locals.attr("K_F6") = py::int_(int(KEY_F6));
+	m_locals.attr("K_F7") = py::int_(int(KEY_F7));
+	m_locals.attr("K_F8") = py::int_(int(KEY_F8));
+	m_locals.attr("K_F9") = py::int_(int(KEY_F9));
+	m_locals.attr("K_F10") = py::int_(int(KEY_F10));
+	m_locals.attr("K_F11") = py::int_(int(KEY_F11));
+	m_locals.attr("K_F12") = py::int_(int(KEY_F12));
+	// gdgame.time
+	py::module m_time = m.def_submodule("time", "gdgame module for monitoring time.");
+	m_time.def("get_ticks", []() { return 0; });
+	// gdgame.event
+	py::module m_event = m.def_submodule("event", "gdgame module for interacting with events and queues.");
+	py::class_<GdEvent>(m_event, "Event")
 		.attr("__version__") = VERSION_FULL_CONFIG;
-	py::class_<ImageRef>(m, "ImageRef")
-		.def("get", &ImageRef::get)
+	m_event.def("get", &event::get);
+	m_event.def("set_grab", &event::set_grab);
+	// gdgame.mouse
+	py::module m_mouse = m.def_submodule("mouse", "gdgame module to work with the mouse.");
+	m_mouse.def("set_visible", [](bool visible) { });
+	m_mouse.def("get_pos", []() { return std::make_tuple(0, 0);});
+	// gdgame.joystick
+	py::module m_joystick = m.def_submodule("joystick", "gdgame module for interacting with joysticks, gamepads, and trackballs.");
+	m_joystick.def("init", []() { });
+	m_joystick.def("quit", []() { });
+	m_joystick.def("get_count", []() { return 0; });
+	// gdgame.mixer
+	py::module m_mixer = m.def_submodule("mixer", "gdgame module for loading and playing sounds.");
+	py::class_<GdSound>(m_mixer, "Sound")
+		.def(py::init<const std::string&>())
+		.def("set_volume", &GdSound::set_volume)
+		.def("play", &GdSound::play)
 		.attr("__version__") = VERSION_FULL_CONFIG;
-	py::class_<Texture>(m, "Texture")
-		.def("get_width", &Texture::get_width)
-		.def("get_height", &Texture::get_height)
-		.def("get_size", &Texture::get_size)
-		.def("get_rid", &Texture::get_rid)
-		.def("is_pixel_opaque", &Texture::is_pixel_opaque)
-		.def("has_alpha", &Texture::has_alpha)
-		.def("set_flags", &Texture::set_flags)
-		.def("get_flags", &Texture::get_flags)
-		.def("draw", &Texture::draw)
-		.def("draw_rect", &Texture::draw_rect)
-		.def("draw_rect_region", &Texture::draw_rect_region)
-		.def("get_rect_region", &Texture::get_rect_region)
-		.def("get_data", &Texture::get_data)
+	m_mixer.def("pre_init", [](int frequency=22050, int size=-16, int channels=2, int buffersize=4096) { });
+	m_mixer.def("init", []() { });
+	m_mixer.def("quit", []() { });
+	m_mixer.def("set_num_channels", [](int channels) { });
+	// gdgame.display
+	py::module m_display = m.def_submodule("display", "gdgame module to control the display window and screen.");
+	m_display.def("set_mode", [](const py::tuple &size) { });
+	m_display.def("set_caption", &display::set_caption);
+	m_display.def("get_surface", &display::get_surface);
+	m_display.def("flip", &display::flip);
+	// gdgame.draw
+	py::module m_draw = m.def_submodule("draw", "gdgame module for drawing shapes.");
+	// gdgame.image
+	py::module m_image = m.def_submodule("image", "gdgame module for image transfer.");
+	m_image.def("load", &image::load);
+	// gdgame.font
+	py::module m_font = m.def_submodule("font", "gdgame module for loading and rendering fonts.");
+	py::class_<GdFont>(m_font, "Font")
+		.def(py::init<const std::string&, int>())
+		.def("render", &GdFont::render)
 		.attr("__version__") = VERSION_FULL_CONFIG;
-	py::class_<ImageTexture>(m, "ImageTexture")
-		.attr("__version__") = VERSION_FULL_CONFIG;
-	py::enum_<Texture::Flags>(m, "TextureFlags")
-		.value("TEXTURE_MIPMAPS", Texture::FLAG_MIPMAPS)
-		.value("TEXTURE_REPEAT", Texture::FLAG_REPEAT)
-		.value("TEXTURE_FILTER", Texture::FLAG_FILTER)
-		.value("TEXTURE_ANISOTROPIC_FILTER", Texture::FLAG_ANISOTROPIC_FILTER)
-		.value("TEXTURE_CONVERT_TO_LINEAR", Texture::FLAG_CONVERT_TO_LINEAR)
-		.value("TEXTURE_VIDEO_SURFACE", Texture::FLAG_VIDEO_SURFACE)
-		.value("TEXTURE_MIRRORED_REPEAT", Texture::FLAG_MIRRORED_REPEAT)
-		.value("TEXTURE_DEFAULT", Texture::FLAGS_DEFAULT)
-		.export_values();
-	py::class_<ImageTextureRef>(m, "ImageTextureRef")
-		.def("get", &ImageTextureRef::get)
-		.attr("__version__") = VERSION_FULL_CONFIG;
-	py::class_<Sprite>(m, "Sprite")
-		.attr("__version__") = VERSION_FULL_CONFIG;
+	m_font.def("init", []() { });
+	m_font.def("quit", []() { });
 }

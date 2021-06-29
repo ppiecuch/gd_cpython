@@ -129,7 +129,7 @@ PyCode_NewEmpty(const char *filename, const char *funcname, int firstlineno)
     funcname_ob = PyString_FromString(funcname);
     if (funcname_ob == NULL)
         goto failed;
-    filename_ob = PyString_FromString(filename);
+    filename_ob = PyString_FromString(filename ? filename : "n/a");
     if (filename_ob == NULL)
         goto failed;
 
@@ -239,7 +239,7 @@ code_new(PyTypeObject *type, PyObject *args, PyObject *kw)
     PyObject *varnames, *ourvarnames = NULL;
     PyObject *freevars = NULL, *ourfreevars = NULL;
     PyObject *cellvars = NULL, *ourcellvars = NULL;
-    PyObject *filename;
+    PyObject *filename = NULL;
     PyObject *name;
     int firstlineno;
     PyObject *lnotab;

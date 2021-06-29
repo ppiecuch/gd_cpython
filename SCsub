@@ -139,6 +139,7 @@ sources = [
 	"CPython/Modules/_sre.c",
 	"CPython/Modules/_codecsmodule.c",
 	"CPython/Modules/_localemodule.c",
+	"CPython/Modules/cPickle.c",
 	"CPython/Modules/cStringIO.c",
 	"CPython/Modules/timemodule.c",
 	"CPython/Modules/datetimemodule.c",
@@ -158,6 +159,7 @@ sources = [
 	"CPython/Modules/zipimport.c",
 	"CPython/Modules/selectmodule.c",
 	"CPython/Modules/signalmodule.c",
+	"CPython/Modules/stropmodule.c",
 	"CPython/Modules/fcntlmodule.c",
 	"CPython/Modules/pydebug.c",
 	"CPython/Config/pyimportconfig.c",
@@ -172,9 +174,13 @@ sources += [
 	"register_types.cpp",
 	"godot_cpython.cpp",
 ]
-if os.path.isfile("pylib/modules/mysticmine_ai.c"):
-	env_module.Append(CPPDEFINES=["MYSTICMINE_AI"])
-	sources += ["pylib/modules/mysticmine_ai.c"]
+
+for filename in os.listdir("pylib/modules"):
+	if filename.endswith(".c") or filename.endswith(".cpp"):
+		base=os.path.splitext(filename)[0]
+		env_module.Append(CPPDEFINES=[base.upper()])
+		print("(CPython) Enabling %s with macro %s" % (filename, base.upper()))
+		sources += ["pylib/modules/%s" % filename]
 
 # build compressed library
 env_module.Zip("pylib.zip", "CPython/Lib", ZIPROOT="modules/gd_cpython/CPython/Lib")

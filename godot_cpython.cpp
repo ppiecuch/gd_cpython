@@ -19,27 +19,23 @@
 
 CPythonRun::CPythonRun(Node2D *p_owner) {
 	static char exec_name[] = "pygodot";
+	static char pythoncaseok[] = "PYTHONCASEOK";
+	static char vhome[] = "VHOME=user://";
 
 	owner = p_owner;
 	Py_SetProgramName(exec_name);
 
 	Py_NoSiteFlag = 1;
-#ifdef DEBUG_ENABLED
-	Py_DebugFlag = 1;
-	Py_VerboseFlag = 2;
-#else
-	Py_DebugFlag = 0;
-	Py_VerboseFlag = 0;
-#endif
 
-	__putenv("PYTHONCASEOK");
+	__putenv(pythoncaseok);
+	__putenv(vhome);
 
 	Py_InitializeEx(0);
 
 	char* n_argv[] = { exec_name };
 	PySys_SetArgv(1, n_argv);
 
-	print_line(vformat("Python interpreter version: %s", Py_GetVersion()));
+	print_line(vformat("Python interpreter version: %s on %s", Py_GetVersion(), Py_GetPlatform()));
 	print_line(vformat("Python standard library path: %s", Py_GetPath()));
 
 #ifdef DEBUG_ENABLED
@@ -62,13 +58,13 @@ void CPythonRun::run_code(const String& p_python_code) {
 
 void CPythonRun::run_file(const String& p_python_file) {
 	if (!p_python_file.empty()) {
-		const char *file = p_python_file.utf8().get_data();
-		PYFILE *fp = pyfopen(file, "r");
+		const std::string file(p_python_file.utf8().get_data());
+		PYFILE *fp = pyfopen(file.c_str(), "r");
 		if (fp != nullptr) {
 			if (PyObject *sys_path = PySys_GetObject("path")) {
 				PyList_SetItem(sys_path, 0, PyString_FromString(p_python_file.get_base_dir().utf8().get_data()));
 			}
-			PyRun_SimpleFile(fp, file);
+			PyRun_SimpleFile(fp, file.c_str());
 			PyErr_Clear();
 			pyfclose(fp);
 		} else {
@@ -76,7 +72,7 @@ void CPythonRun::run_file(const String& p_python_file) {
 			save_errno = errno;
 			PySys_WriteStderr("Could not open file\n");
 			errno = save_errno;
-			PyErr_SetFromErrnoWithFilename(PyExc_IOError, file);
+			PyErr_SetFromErrnoWithFilename(PyExc_IOError, file.c_str());
 			PyErr_Print();
 			PyErr_Clear();
 		}
@@ -248,6 +244,30 @@ String CPythonInstance::get_tick_func() const {
 	return python_tick_func;
 }
 
+void CPythonInstance::set_event_func(const String &func) {
+	python_event_func = func;
+}
+
+String CPythonInstance::get_event_func() const {
+	return python_event_func;
+}
+
+void CPythonInstance::set_debug_level(const int level) {
+	Py_DebugFlag = level;
+}
+
+int CPythonInstance::get_debug_level() const {
+	return Py_DebugFlag;
+}
+
+void CPythonInstance::set_verbose_level(const int level) {
+	Py_VerboseFlag = level;
+}
+
+int CPythonInstance::get_verbose_level() const {
+	return Py_VerboseFlag;
+}
+
 void CPythonInstance::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_python_code", "code"), &CPythonInstance::set_python_code);
 	ClassDB::bind_method(D_METHOD("get_python_code"), &CPythonInstance::get_python_code);
@@ -259,12 +279,21 @@ void CPythonInstance::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_init_func"), &CPythonInstance::get_init_func);
 	ClassDB::bind_method(D_METHOD("set_tick_func", "func"), &CPythonInstance::set_tick_func);
 	ClassDB::bind_method(D_METHOD("get_tick_func"), &CPythonInstance::get_tick_func);
+	ClassDB::bind_method(D_METHOD("set_event_func", "func"), &CPythonInstance::set_event_func);
+	ClassDB::bind_method(D_METHOD("get_event_func"), &CPythonInstance::get_event_func);
+	ClassDB::bind_method(D_METHOD("set_debug_level"), &CPythonInstance::set_debug_level);
+	ClassDB::bind_method(D_METHOD("get_debug_level"), &CPythonInstance::get_debug_level);
+	ClassDB::bind_method(D_METHOD("set_verbose_level"), &CPythonInstance::set_verbose_level);
+	ClassDB::bind_method(D_METHOD("get_verbose_level"), &CPythonInstance::get_verbose_level);
 
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "autorun"), "set_autorun", "is_autorun");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "init_func"), "set_init_func", "get_init_func");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "tick_func"), "set_tick_func", "get_tick_func");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "event_func"), "set_event_func", "get_event_func");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "python_code", PROPERTY_HINT_MULTILINE_TEXT, "", PROPERTY_USAGE_DEFAULT_INTL), "set_python_code", "get_python_code");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "python_file_path"), "set_python_file", "get_python_file");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "debug_level"), "set_debug_level", "get_debug_level");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "verbose_level"), "set_verbose_level", "get_verbose_level");
 
 	ADD_SIGNAL(MethodInfo("python_file_changed"));
 	ADD_SIGNAL(MethodInfo("python_code_changed"));
@@ -275,5 +304,8 @@ CPythonInstance::CPythonInstance() {
 	_dirty = false;
 	python_init_func = "_gd_init";
 	python_tick_func = "_gd_tick";
+	python_event_func = "_gd_event";
 	python_autorun = false;
+	Py_DebugFlag = 0;
+	Py_VerboseFlag = 0;
 }

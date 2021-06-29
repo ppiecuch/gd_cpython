@@ -1645,7 +1645,7 @@ posix_chdir(PyObject *self, PyObject *args)
 #elif defined(__VMS)
     return posix_1str(args, "et:chdir", (int (*)(const char *))chdir);
 #else
-    return posix_1str(args, "et:chdir", chdir);
+    return posix_1str(args, "et:chdir", pychdir);
 #endif
 }
 

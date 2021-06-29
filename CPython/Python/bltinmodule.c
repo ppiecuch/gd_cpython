@@ -458,7 +458,7 @@ static PyObject *
 builtin_compile(PyObject *self, PyObject *args, PyObject *kwds)
 {
     char *str;
-    char *filename;
+    char *filename = NULL;
     char *startstr;
     int mode = -1;
     int dont_inherit = 0;
@@ -521,7 +521,7 @@ builtin_compile(PyObject *self, PyObject *args, PyObject *kwds)
                 PyArena_Free(arena);
                 return NULL;
             }
-            result = (PyObject*)PyAST_Compile(mod, filename,
+            result = (PyObject*)PyAST_Compile(mod, filename ? filename : "n/a",
                                               &cf, arena);
             PyArena_Free(arena);
         }

@@ -15,23 +15,29 @@
 
 #define FAILURE (-1)
 
-static int _conv_perm(int mode) {
+enum ExModeFlags {
+
+	EX_CREATE = 256,
+	EX_APPEND = 512,
+};
+
+static DirAccess *_current_dir = nullptr;
+
+static int _conv_perm(const String &p_path, int mode) {
     // Convert permissions
     int flags = 0;
     if (mode & O_RDONLY) {
-        if (mode & (O_RDWR | O_CREAT)) {
-            flags = FileAccess::WRITE;
-        } else {
-            flags = FileAccess::READ;
-        }
-    } else if (mode & (O_WRONLY | O_CREAT)) {
+		flags = FileAccess::READ;
+    } else if (mode & O_WRONLY) {
         flags = FileAccess::WRITE;
     }
 
     if (mode & O_APPEND) {
-        flags |= FileAccess::READ_WRITE;
-    } else if (mode & O_TRUNC) {
-        flags |= FileAccess::WRITE_READ;
+		if (FileAccess::exists(p_path)) {
+			flags = FileAccess::READ_WRITE | EX_APPEND;
+		} else {
+			flags = FileAccess::WRITE_READ;
+		}
     }
 
     if (flags == 0) {
@@ -41,43 +47,73 @@ static int _conv_perm(int mode) {
     return flags;
 }
 
-static int _conv_perm(const char *mode) {
+static int _conv_perm(const String &p_path, const char *mode) {
 #define check(C) (strstr(mode, C)!=0)
-    // Convert permissions
-    int flags = 0;
-    if (check("r+") || check("w+"))
-            flags = FileAccess::READ_WRITE;
-    else if (check("r"))
-            flags = FileAccess::READ;
-    else if (check("w"))
-            flags = FileAccess::WRITE;
+	// Convert permissions
+	int flags = 0;
+	if (check("r+"))
+			flags = FileAccess::READ_WRITE;
+	else if (check("w+"))
+			flags = FileAccess::WRITE_READ;
+	else if (check("r"))
+			flags = FileAccess::READ;
+	else if (check("w"))
+			flags = FileAccess::WRITE;
 
-    if (check("a"))
-        flags |= FileAccess::READ_WRITE;
-    else if (check("w") && !check("w+"))
-        flags |= FileAccess::WRITE_READ;
+	if (check("a")) {
+		if (FileAccess::exists(p_path)) {
+			flags = FileAccess::READ_WRITE | EX_APPEND;
+		} else {
+			flags = FileAccess::WRITE_READ;
+		}
+	}
 
-    if (flags == 0)
-        flags = FileAccess::READ; // default
+	if (flags == 0)
+		flags = FileAccess::READ; // default
 #undef check
-    return flags;
+	return flags;
 }
 
 struct PYFILE {
 	FileAccess *fa;
-	static PYFILE *fopen(const String &p_path, int p_mode_flags) {
-		if (FileAccess *_fa = FileAccess::open(p_path, _conv_perm(p_mode_flags))) {
-			return memnew(PYFILE(_fa));
-		} else {
-			return nullptr;
+	static String fixpath(const String &p_path) {
+		if (_current_dir
+			&& !p_path.is_abs_path()
+			&& !FileAccess::exists(p_path)
+		) {
+			return _current_dir->get_current_dir().append_path(p_path);
 		}
+		return p_path;
+	}
+	static PYFILE *fopen(const String &p_path, int p_mode_flags) {
+		if (!p_path.empty()) {
+			const String real_path = fixpath(p_path);
+			const int flags = _conv_perm(real_path, p_mode_flags);
+			if (FileAccess *_fa = FileAccess::open(real_path, flags&0xff)) {
+				if (flags & EX_APPEND) {
+					_fa->seek_end();
+				}
+				return memnew(PYFILE(_fa));
+			} else {
+				return nullptr;
+			}
+		}
+		return nullptr;
 	}
 	static PYFILE *fopen(const String &p_path, const char *p_mode_flags) {
-		if (FileAccess *_fa = FileAccess::open(p_path, _conv_perm(p_mode_flags))) {
-			return memnew(PYFILE(_fa));
-		} else {
-			return nullptr;
+		if (!p_path.empty()) {
+			const String real_path = fixpath(p_path);
+			const int flags = _conv_perm(real_path, p_mode_flags);
+			if (FileAccess *_fa = FileAccess::open(real_path, flags&0xff)) {
+				if (flags & EX_APPEND) {
+					_fa->seek_end();
+				}
+				return memnew(PYFILE(_fa));
+			} else {
+				return nullptr;
+			}
 		}
+		return nullptr;
 	}
 	PYFILE(FileAccess *p_fa) {
 		fa = p_fa;
@@ -107,8 +143,7 @@ int _gd_open(const char* name, int flags) {
 }
 
 PYFILE *_gd_popen(const char *cmd, const char *mode) {
-	PYFILE *r = PYFILE::fopen(cmd, mode);
-	return r;
+	return PYFILE::fopen(cmd, mode);
 }
 
 int _gd_close(int fd) {
@@ -188,6 +223,33 @@ static bool _is_link(String p_dir) {
 	return da->is_link(p_dir);
 }
 
+int _gd_chdir(const char *dir) {
+	if (!_current_dir) {
+		_current_dir = DirAccess::create_for_path(dir);
+	}
+	switch (_current_dir->change_dir(dir)) {
+		case ERR_INVALID_PARAMETER: return ENOENT;
+		case ERR_UNAVAILABLE: return EACCES;
+		case OK: return 0;
+		default: break;
+	}
+	return EFAULT;
+}
+
+char *_gd_getcwd(char *buf, int size) {
+	if (!_current_dir) {
+		return nullptr;
+	}
+	if (const char *curr = _current_dir->get_current_dir().utf8().get_data()) {
+		if (!buf) {
+			buf = (char*)malloc(strlen(curr));
+		}
+		strncpy(buf, curr, size);
+		return buf;
+	}
+	return nullptr;
+}
+
 int _gd_fstat(PYFILE *f, struct stat *buf) {
 	if (f) {
 		String path = f->fa->get_path();
@@ -257,9 +319,9 @@ ssize_t _gd_fwrite(const void* buf, size_t len, size_t cnt, PYFILE *f) {
 		if (f->fa) {
 			f->fa->store_buffer((const uint8_t*)buf, cnt * len);
 		} else if (f == _gd_stdout()) {
-			fwrite(buf, len, cnt, stdout);
+			return fwrite(buf, len, cnt, stdout);
 		} else if (f == _gd_stderr()) {
-			fwrite(buf, len, cnt, stderr);
+			return fwrite(buf, len, cnt, stderr);
 #ifdef PYSTDERR_TO_FILE
 			FileAccessRef log(FileAccess::open("py_stderr.txt", FileAccess::READ_WRITE));
 			if (log) {
@@ -268,10 +330,12 @@ ssize_t _gd_fwrite(const void* buf, size_t len, size_t cnt, PYFILE *f) {
 #endif
 		} else if (f == _gd_stdin()) {
 			WARN_PRINT("File handle should not be stdin - information lost.");
+			return 0;
 		} else {
 			WARN_PRINT("Undefined file access - information lost.");
+			return 0;
 		}
-		return len;
+		return cnt * len;
 	}
 	return 0;
 }
@@ -385,6 +449,13 @@ int _gd_putc(int ch, PYFILE *f) {
 }
 
 int _gd_ungetc(int c, PYFILE *f) {
+	if (f) {
+		const uint64_t cur = f->fa->get_position();
+		if (cur) {
+			f->fa->seek(cur - 1);
+			return c;
+		}
+	}
 	return EOF;
 }
 

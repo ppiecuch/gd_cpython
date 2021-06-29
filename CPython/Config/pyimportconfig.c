@@ -29,6 +29,7 @@ extern void init_json(void);
 extern void initzlib(void);
 extern void init_struct(void);
 extern void init_functools(void);
+extern void initstrop(void);
 #ifdef WITH_THREAD
 extern void initthread(void);
 #endif
@@ -47,7 +48,12 @@ extern void initfcntl(void);
 extern void init_PyCrypto(void);
 #endif
 
+extern void initcPickle(void);
 extern void initzipimport(void);
+
+#ifdef APP_MM_AI
+extern void initai(void);
+#endif
 
 struct _inittab _PyImport_Inittab[] = {
 	
@@ -88,12 +94,11 @@ struct _inittab _PyImport_Inittab[] = {
 	{"signal", initsignal},
 	{"fcntl", initfcntl},
 	{"cmath", initcmath},
+	{"strop", initstrop},
 
 #if 0
 	{"_ast", init_ast},
 	{"future_builtins", initfuture_builtins},
-	{"strop", initstrop},
-	{"cPickle", initcPickle},
 	{"_subprocess", init_subprocess},
 	
 	{"_hotshot", init_hotshot},
@@ -116,6 +121,7 @@ struct _inittab _PyImport_Inittab[] = {
 	{"_codecs_tw", init_codecs_tw},
 #endif
 	
+	{"cPickle", initcPickle},
 	{"zipimport", initzipimport},
 	/* This module "lives in" with marshal.c */
 	{"marshal", PyMarshal_Init},
@@ -135,7 +141,10 @@ struct _inittab _PyImport_Inittab[] = {
 #ifdef WITH_PYCRYPTO
 	{"Crypto", init_PyCrypto},
 #endif
-	
+
+#ifdef APP_MM_AI
+	{"ai", initai},
+#endif
 	/* Sentinel */
 	{0, 0}
 };

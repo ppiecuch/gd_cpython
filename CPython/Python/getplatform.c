@@ -2,7 +2,17 @@
 #include "Python.h"
 
 #ifndef PLATFORM
-#define PLATFORM "unknown"
+#if defined(__ANDROID__)
+#define PLATFORM "Android"
+#elif defined(__APPLE__)
+#define PLATFORM "Darwin (Apple)"
+#elif defined(__linux__)
+#define PLATFORM "Linux"
+#elif defined(_WIN32) || define(WIN32)
+#define PLATFORM "Windows"
+#else
+#define PLATFORM "Unknown"
+#endif
 #endif
 
 const char *
