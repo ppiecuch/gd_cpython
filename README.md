@@ -35,7 +35,7 @@ def _gd_build(instance_id):
 __Note:__
 
   * ```_gd_build``` is a name that can be customized in _CPythonInstance_ properties.
-  * ```instance_id`` is Godot's instance id of _CPythonInstance_ node (later it is necessery for drawing), eg:
+  * ```instance_id``` is Godot's instance id of _CPythonInstance_ node (later it is necessery for drawing), eg:
 
 ```
 	void _blit(int instance_id, const GdSurface &source, const Point2 &dest, const Rect2 &area) {
