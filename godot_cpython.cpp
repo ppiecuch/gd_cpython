@@ -4,18 +4,26 @@
 #include "core/rid.h"
 #include "servers/visual_server.h"
 
+#ifndef _HAS_EXCEPTIONS
+// https://gcc.gnu.org/onlinedocs/libstdc++/manual/using_exceptions.html
+#define throw
+#define try          if (true)
+#define catch(...)   if (false)
+#endif
+
 #include "pylib/godot/py_godot.h"
 
-// Reference:
-// ----------
-// https://github.com/RomkoSI/Blender3D/blob/d8ee882db43daeb4859348e94a66abd0353150aa/source/blender/python/generic/bgl.c#L1693
-// http://python3porting.com/cextensions.html
-// https://realpython.com/build-python-c-extension-module/
-// https://groups.google.com/g/cython-users/c/G3O6YM6YgY4
-// https://stackoverflow.com/questions/39250524/programmatically-define-a-package-structure-in-embedded-python-3
-// https://www.oreilly.com/library/view/python-cookbook/0596001673/ch16s06.html
-// https://stackabuse.com/enhancing-python-with-custom-c-extensions
-// https://github.com/pasimako/embedPython
+namespace py = pybind11;
+using namespace py::literals;
+
+static bool py_has_error();
+static String object_to_string(PyObject *p_val);
+static py::object py_eval(const char *expr, const py::object &o = py::none());
+static py::object py_call(py::object p_obj, String p_func_name, py::args p_args = py::args());
+static py::object py_call(String p_func_name, py::args p_args, String p_module = "__main__");
+
+constexpr const char *__init_func = "gd_init";
+constexpr const char *__tick_func = "gd_tick";
 
 CPythonRun::CPythonRun(Node2D *p_owner) {
 	static char exec_name[] = "pygodot";
@@ -79,99 +87,17 @@ void CPythonRun::run_file(const String& p_python_file) {
 	}
 }
 
-PyObject* CPythonRun::import_module(const String& p_code_obj, const String& p_module_name) {
-	PyObject *po_module = nullptr;
-
-	// Get reference to main module
-	PyObject *main_module = PyImport_AddModule("__main__");
-
-	// De-serialize Python code object
-	PyObject *code_obj = PyMarshal_ReadObjectFromString(p_code_obj.utf8().ptr(), p_code_obj.size());
-
-	if(!has_error()) {
-		// Load module from code object
-		po_module = PyImport_ExecCodeModule(p_module_name.utf8().get_data(), code_obj);
-
-		if(!has_error()) {
-			// Add module to main module as p_module_name
-			PyModule_AddObject(main_module, p_module_name.utf8().get_data(), po_module);
-		}
-
-		// Release object reference (Python cannot track references automatically in C++!)
-		Py_XDECREF(code_obj);
-	}
-
-	return po_module;
-}
-
-PyObject *CPythonRun::call_function(PyObject *p_module, String p_func_name, PyObject *p_args) {
-	PyObject *ret = nullptr;
-
-	// Get reference to function p_func_name in module p_module
-	PyObject *func = PyObject_GetAttrString(p_module, p_func_name.utf8().get_data());
-
-	if(!has_error()) {
-		// Call function with arguments p_args
-		ret = PyObject_CallObject(func, p_args);
-
-		if(has_error()) {
-			ret = nullptr;
-		}
-
-		// Release reference to function
-		Py_XDECREF(func);
-	}
-
-	// Release reference to arguments
-	Py_XDECREF(p_args);
-
-	return ret;
-}
-
-String CPythonRun::object_to_string(PyObject *p_val) {
-	String val;
-
-	if(p_val != nullptr) {
-		if(PyUnicode_Check(p_val)) {
-			// Convert Python Unicode object to UTF8 and return pointer to buffer
-			// PyObject* objectsRepresentation = PyObject_Repr(yourObject);
-			const char *str = PyString_AsString(p_val);
-
-			if(!has_error()) {
-				val = String(str);
-			}
-		}
-
-		// Release reference to object
-		Py_XDECREF(p_val);
-	}
-
-	return val;
-}
-
-bool CPythonRun::has_error() {
-	bool error = false;
-
-	if(PyErr_Occurred()) {
-		// Output error to stderr and clear error indicator
-		PyErr_Print();
-		error = true;
-	}
-
-	return error;
-}
-
-
 // Node instance
 
 void CPythonInstance::_notification(int p_what) {
 	switch (p_what) {
-		case NOTIFICATION_READY: {
-			if (_cpython.is_null()) {
-				_cpython = Ref<CPythonRun>(memnew(CPythonRun(this)));
-			}
-		} break;
 		case NOTIFICATION_ENTER_TREE: {
+			set_process(true);
+		} break;
+		case NOTIFICATION_EXIT_TREE: {
+			set_process(false);
+		} break;
+		case NOTIFICATION_READY: {
 			if (_cpython.is_null()) {
 				_cpython = Ref<CPythonRun>(memnew(CPythonRun(this)));
 			}
@@ -184,16 +110,20 @@ void CPythonInstance::_notification(int p_what) {
 					_cpython->run_code(python_code);
 					_last_code_run = python_code.md5_text();
 				}
-				if (!python_init_func.empty()) {
-					// _cpython->call_function();
+				if (!python_gd_build_func.empty()) {
+					py_app = py_call(python_gd_build_func, py::make_tuple(get_instance_id()));
+				}
+				if (!py_app.is(py::none())) {
+					py_call(py_app, __init_func);
 				}
 			}
-			set_process(true);
 		} break;
 		case NOTIFICATION_PROCESS: {
 			if (_running) {
 				// call tick function
-				if (!python_tick_func.empty()) {
+				if (!py_app.is(py::none())) {
+					const real_t delta = get_process_delta_time();
+					py_call(py_app, __tick_func, py::make_tuple(delta));
 				}
 			}
 		}
@@ -228,28 +158,12 @@ bool CPythonInstance::is_autorun() const {
 	return python_autorun;
 }
 
-void CPythonInstance::set_init_func(const String &func) {
-	python_init_func = func;
+void CPythonInstance::set_gd_build_func(const String &func) {
+	python_gd_build_func = func;
 }
 
-String CPythonInstance::get_init_func() const {
-	return python_init_func;
-}
-
-void CPythonInstance::set_tick_func(const String &func) {
-	python_tick_func = func;
-}
-
-String CPythonInstance::get_tick_func() const {
-	return python_tick_func;
-}
-
-void CPythonInstance::set_event_func(const String &func) {
-	python_event_func = func;
-}
-
-String CPythonInstance::get_event_func() const {
-	return python_event_func;
+String CPythonInstance::get_gd_build_func() const {
+	return python_gd_build_func;
 }
 
 void CPythonInstance::set_debug_level(const int level) {
@@ -275,21 +189,15 @@ void CPythonInstance::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_python_file"), &CPythonInstance::get_python_file);
 	ClassDB::bind_method(D_METHOD("set_autorun", "autorun"), &CPythonInstance::set_autorun);
 	ClassDB::bind_method(D_METHOD("is_autorun"), &CPythonInstance::is_autorun);
-	ClassDB::bind_method(D_METHOD("set_init_func", "func"), &CPythonInstance::set_init_func);
-	ClassDB::bind_method(D_METHOD("get_init_func"), &CPythonInstance::get_init_func);
-	ClassDB::bind_method(D_METHOD("set_tick_func", "func"), &CPythonInstance::set_tick_func);
-	ClassDB::bind_method(D_METHOD("get_tick_func"), &CPythonInstance::get_tick_func);
-	ClassDB::bind_method(D_METHOD("set_event_func", "func"), &CPythonInstance::set_event_func);
-	ClassDB::bind_method(D_METHOD("get_event_func"), &CPythonInstance::get_event_func);
+	ClassDB::bind_method(D_METHOD("set_gd_build_func", "func"), &CPythonInstance::set_gd_build_func);
+	ClassDB::bind_method(D_METHOD("get_gd_build_func"), &CPythonInstance::get_gd_build_func);
 	ClassDB::bind_method(D_METHOD("set_debug_level"), &CPythonInstance::set_debug_level);
 	ClassDB::bind_method(D_METHOD("get_debug_level"), &CPythonInstance::get_debug_level);
 	ClassDB::bind_method(D_METHOD("set_verbose_level"), &CPythonInstance::set_verbose_level);
 	ClassDB::bind_method(D_METHOD("get_verbose_level"), &CPythonInstance::get_verbose_level);
 
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "autorun"), "set_autorun", "is_autorun");
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "init_func"), "set_init_func", "get_init_func");
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "tick_func"), "set_tick_func", "get_tick_func");
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "event_func"), "set_event_func", "get_event_func");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "gd_build_func"), "set_gd_build_func", "get_gd_build_func");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "python_code", PROPERTY_HINT_MULTILINE_TEXT, "", PROPERTY_USAGE_DEFAULT_INTL), "set_python_code", "get_python_code");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "python_file_path"), "set_python_file", "get_python_file");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "debug_level"), "set_debug_level", "get_debug_level");
@@ -302,10 +210,127 @@ void CPythonInstance::_bind_methods() {
 CPythonInstance::CPythonInstance() {
 	_running = false;
 	_dirty = false;
-	python_init_func = "_gd_init";
-	python_tick_func = "_gd_tick";
-	python_event_func = "_gd_event";
+
+	python_gd_build_func = "_gd_build";
 	python_autorun = false;
+
 	Py_DebugFlag = 0;
 	Py_VerboseFlag = 0;
+}
+
+
+// Python utilities
+
+// Reference:
+// ----------
+// https://stackoverflow.com/questions/8436578/passing-a-c-pointer-around-with-the-python-c-api
+
+static bool py_has_error() {
+	bool error = false;
+
+	if(PyErr_Occurred()) {
+		// Output error to stderr and clear error indicator
+		PyErr_Print();
+		error = true;
+	}
+
+	return error;
+}
+
+static String object_to_string(PyObject *p_val) {
+	String val;
+	if(p_val != nullptr) {
+		if(PyUnicode_Check(p_val)) {
+			const char *str = PyString_AsString(p_val);
+			if(!py_has_error()) {
+				val = String(str);
+			}
+		}
+		Py_XDECREF(p_val); // Release reference to object
+	}
+	return val;
+}
+
+static PyObject* import_module(const String& p_code_obj, const String& p_module_name) {
+	PyObject *po_module = nullptr;
+	PyObject *main_module = PyImport_AddModule("__main__"); // Get reference to main module
+	PyObject *code_obj = PyMarshal_ReadObjectFromString(p_code_obj.utf8().ptr(), p_code_obj.size()); // De-serialize Python code object
+	if(!py_has_error()) {
+		po_module = PyImport_ExecCodeModule(p_module_name.utf8().get_data(), code_obj); // Load module from code object
+		if(!py_has_error()) {
+			PyModule_AddObject(main_module, p_module_name.utf8().get_data(), po_module); // Add module to main module as p_module_name
+		}
+		Py_XDECREF(code_obj); // Release object reference (Python cannot track references automatically in C++!)
+	}
+	return po_module;
+}
+
+static PyObject *call_function(PyObject *p_module, String p_func_name, PyObject *p_args) {
+	PyObject *ret = nullptr;
+	PyObject *func = PyObject_GetAttrString(p_module, p_func_name.utf8().get_data()); // Get reference to function p_func_name in module p_module
+	if(!py_has_error()) {
+		ret = PyObject_CallObject(func, p_args); // Call function with arguments p_args
+		if(py_has_error()) {
+			ret = nullptr;
+		}
+		Py_XDECREF(func); // Release reference to function
+	}
+	Py_XDECREF(p_args); // Release reference to arguments
+	return ret;
+}
+
+static py::object py_eval(const char *expr, const py::object &o) {
+	py::object res = py::none();
+	try {
+		if (!o.is(py::none())) {
+			auto locals = py::dict("_v"_a = o);
+			res = py::eval(expr, py::globals(), locals);
+		} else {
+			res = py::eval(expr, py::globals());
+		}
+#ifdef DEBUG_ENABLED
+		if (!res.is(py::none())) {
+			py::print("Return value:", res);
+		}
+#endif
+	} catch (py::error_already_set &e) {
+		std::cout << "py_eval error_already_set: " << std::endl;
+	} catch (std::runtime_error &e) {
+		std::cout << "py_eval runtime_error: " << e.what() << std::endl;
+	} catch (...) {
+		std::cout << "py_eval unknown exception" << std::endl;
+	}
+	return res;
+}
+
+// Reference:
+// ----------
+// https://developpaper.com/using-pybind11-to-call-between-c-and-python-code-on-windows-10/
+
+static py::object py_call(py::object p_obj, String p_func_name, py::args p_args) {
+	auto r = p_obj.attr(p_func_name.utf8().get_data())(*p_args);
+#ifdef DEBUG_ENABLED
+	if (!r.is(py::none())) {
+		py::print("Return value: ", p_func_name, " -> ", r);
+	}
+#endif
+	return r;
+}
+
+static py::object py_call(String p_func_name, py::args p_args, String p_module) {
+	String module = p_module;
+	String function = p_func_name;
+
+	if (module.empty()) {
+		module = "__main__";
+	}
+
+	auto m = py::module::import(module.utf8().get_data());
+	auto r = m.attr(function.utf8().get_data())(*p_args);
+#ifdef DEBUG_ENABLED
+	if (!r.is(py::none())) {
+		py::print("Return value: ", function, " -> ", r);
+	}
+#endif
+	return r;
 }

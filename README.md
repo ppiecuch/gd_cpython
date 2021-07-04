@@ -1,21 +1,71 @@
 ### Simple Python2 interface to Godot (CPython embedded)
 
-Build a single static library with Python (https://github.com/albertz/python-embedded).
+Build a single static library with embedded CPython.
 
-This passes `test_crypto()` in [binstruct](https://github.com/albertz/binstruct/).
+Important pieces of implememtation are:
+
+1. C-Api interface to _Godot_ filesystem: [_py_file.cpp](CPython/Godot/_py_file.cpp)
+2. Interface to _Godot_ functions: [py_godot.h](pylib/godot/py_godot.h)
+
+Example of usage:
+
+```
+class GodotInterface:
+	"""Godot interface to the main application
+	"""
+	def __init__( self, instance_id ):
+		self.instance_id = instance_id
+
+	def gd_init( self ):
+		self.app = MyPythonApp( )
+
+	def gd_tick( self, delta ):
+		self.app.game_tick( delta )
+
+	def gd_event( self, event ):
+		self.app.game_event( event )
+
+	def gd_term( self ):
+		self.app.game_term( )
+
+def _gd_build(instance_id):
+	return GodotInterface( instance_id )
+```
+
+__Note:__
+
+  * ```_gd_build``` is a name that can be customized in _CPythonInstance_ properties.
+  * ```instance_id`` is Godot's instance id of _CPythonInstance_ node (later it is necessery for drawing), eg:
+
+```
+	void _blit(int instance_id, const GdSurface &source, const Point2 &dest, const Rect2 &area) {
+		if (Object *parent = ObjectDB::get_instance(instance_id)) {
+			if (CanvasItem *canvas = Object::cast_to<CanvasItem>(parent)) {
+			} else {
+				WARN_PRINT("Not an CanvasItem");
+			}
+		}
+	}
+```
+
+  * interface to Godot consist of four methods: ```gd_init( instacne_id )```, ```gd_tick( delta )```, ```gd_event( event )```, ```gd_term( )```
 
 ---
 
-I tried a sample iOS binary where I linked against `libpython.a` and copied the `pylib` directory into Resources (following not-included symlinks).
+From original ReadMe (https://github.com/albertz/python-embedded):
 
-This is the sample code:
-
-    Py_SetProgramName((char*)[[[[NSBundle mainBundle] bundlePath] stringByAppendingString:@"/"] UTF8String]);
-    Py_Initialize();
-    PyRun_SimpleString("print 'Hello world!'");
-
-And it works. :)
-
+> Build a single static library with Python and PyCrypto.
+> This passes `test_crypto()` in [binstruct](https://github.com/albertz/binstruct/).
+>
+> I tried a sample iOS binary where I linked against `libpython.a` and copied the `pylib` directory into Resources (following not-included symlinks).
+>
+> This is the sample code:
+>
+>    Py_SetProgramName((char*)[[[[NSBundle mainBundle] bundlePath] stringByAppendingString:@"/"] UTF8String]);
+>    Py_Initialize();
+>    PyRun_SimpleString("print 'Hello world!'");
+>
+> And it works. :)
 
 ## Reference:
 
@@ -24,6 +74,11 @@ And it works. :)
 3. http://python3porting.com/cextensions.html
 4. https://realpython.com/build-python-c-extension-module/
 5. https://groups.google.com/g/cython-users/c/G3O6YM6YgY4
+6. https://stackoverflow.com/questions/39250524/programmatically-define-a-package-structure-in-embedded-python-3
+7. https://www.oreilly.com/library/view/python-cookbook/0596001673/ch16s06.html
+8. https://stackabuse.com/enhancing-python-with-custom-c-extensions
+9. https://github.com/pasimako/embedPython
+10. https://stackoverflow.com/questions/42521830/call-a-python-function-from-c-using-pybind11
 
 *c++/Qt:*
 1. https://ubuverse.com/embedding-the-python-interpreter-in-a-qt-application/

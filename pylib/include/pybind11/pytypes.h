@@ -11,6 +11,7 @@
 
 #include "detail/common.h"
 #include "buffer_info.h"
+#include <string>
 #include <utility>
 #include <type_traits>
 

@@ -37,6 +37,14 @@ struct GdSurface {
 	}
 	void blit_area(const GdSurface &source, const py::tuple &dest, const std::vector<real_t> &area) {
 	}
+	void _blit(int instance_id, const GdSurface &source, const Point2 &dest, const Rect2 &area) {
+		if (Object *parent = ObjectDB::get_instance(instance_id)) {
+			if (CanvasItem *canvas = Object::cast_to<CanvasItem>(parent)) {
+			} else {
+				WARN_PRINT("Not an CanvasItem");
+			}
+		}
+	}
 };
 
 // Wrapper around Bitmap or Dynamic font
@@ -79,9 +87,6 @@ namespace utils {
 } // utils
 
 namespace event {
-	py::list get() {
-		return py::list();
-	}
 	void set_grab(bool grab) {
 	}
 } // event
@@ -400,7 +405,6 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 	py::module m_event = m.def_submodule("event", "gdgame module for interacting with events and queues.");
 	py::class_<GdEvent>(m_event, "Event")
 		.attr("__version__") = VERSION_FULL_CONFIG;
-	m_event.def("get", &event::get);
 	m_event.def("set_grab", &event::set_grab);
 	// gdgame.mouse
 	py::module m_mouse = m.def_submodule("mouse", "gdgame module to work with the mouse.");

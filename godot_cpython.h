@@ -8,6 +8,8 @@
 #include "core/variant.h"
 #include "scene/2d/node_2d.h"
 
+#include "pybind11/pytypes.h"
+
 class CPythonRun : public Reference {
 
 public:
@@ -22,9 +24,6 @@ public:
 	bool has_error();
 	void run_file(const String& p_python_file);
 	void run_code(const String& p_python_code);
-	PyObject* import_module(const String& p_code_obj, const String& p_module_name);
-	PyObject* call_function(PyObject *p_module, String p_func_name, PyObject *p_args);
-	String object_to_string(PyObject*);
 };
 
 class CPythonInstance : public Node2D {
@@ -33,11 +32,11 @@ class CPythonInstance : public Node2D {
 	String python_code;
 	String python_file;
 	bool python_autorun;
-	String python_init_func;
-	String python_tick_func;
-	String python_event_func;
+	String python_gd_build_func;
 	int debug_level;
 	int verboe_level;
+
+	pybind11::object py_app;
 
 	Ref<CPythonRun> _cpython;
 	bool _running;
@@ -56,12 +55,8 @@ public:
 	String get_python_file() const;
 	void set_autorun(bool autorun);
 	bool is_autorun() const;
-	void set_init_func(const String &func);
-	String get_init_func() const;
-	void set_tick_func(const String &func);
-	String get_tick_func() const;
-	void set_event_func(const String &func);
-	String get_event_func() const;
+	void set_gd_build_func(const String &func);
+	String get_gd_build_func() const;
 	void set_debug_level(const int level);
 	int get_debug_level() const;
 	void set_verbose_level(const int level);
@@ -69,5 +64,11 @@ public:
 
 	CPythonInstance();
 };
+
+#if __has_feature(cxx_exceptions) || defined(__cpp_exceptions) \
+	|| defined(__EXCEPTIONS) \
+	|| (defined(_MSC_VER) && defined(_CPPUNWIND))
+#define _HAS_EXCEPTIONS
+#endif
 
 #endif // GODOT_CPYTHON_H
