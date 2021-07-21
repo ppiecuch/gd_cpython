@@ -344,7 +344,7 @@ PyFloat_AsReprString(char *buf, PyFloatObject *v)
 
 /* ARGSUSED */
 static int
-float_print(PyFloatObject *v, FILE *fp, int flags)
+float_print(PyFloatObject *v, PYFILE *fp, int flags)
 {
     char *buf;
     if (flags & Py_PRINT_RAW)
@@ -355,7 +355,7 @@ float_print(PyFloatObject *v, FILE *fp, int flags)
         buf = PyOS_double_to_string(v->ob_fval,
                             'r', 0, Py_DTSF_ADD_DOT_0, NULL);
     Py_BEGIN_ALLOW_THREADS
-    fputs(buf, fp);
+    pyfputs(buf, fp);
     Py_END_ALLOW_THREADS
     PyMem_Free(buf);
     return 0;

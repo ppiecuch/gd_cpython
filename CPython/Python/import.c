@@ -699,7 +699,6 @@ PyImport_ExecCodeModuleEx(const char *name, PyObject *co, char *pathname)
     return NULL;
 }
 
-
 /* Given a pathname for a Python source file, fill a buffer with the
    pathname for the corresponding compiled file.  Return the pathname
    for the compiled file, or NULL if there's no space in the buffer.
@@ -717,6 +716,20 @@ make_compiled_pathname(char *pathname, char *buf, size_t buflen)
        that used in _PyImport_StandardFiletab. */
     if (len >= 4 && strcmp(&pathname[len-4], ".pyw") == 0)
         --len;          /* pretend 'w' isn't there */
+#endif
+#ifdef GD_PYTHON
+    /* Replace res:// with user://__pycache__/ - in production we should
+       propably distribute pyc/pyo objects */
+    const char *res = "res://";
+    const int len_res = 6; /* strlen(res) */
+    const char *user = "user://__pycache__/";
+    const int len_user = 19; /* strlen(user) */
+    if (strncmp(res, pathname, len_res) == 0) {
+        memcpy(buf, user, len_user);
+        buf += len_user;
+        pathname += len_res;
+        len -= len_res;
+    }
 #endif
     memcpy(buf, pathname, len);
     buf[len] = Py_OptimizeFlag ? 'o' : 'c';
@@ -849,8 +862,8 @@ open_exclusive(char *filename, mode_t mode)
        writable, the file will never be written.  Oh well.
     */
     int fd;
-    (void) unlink(filename);
-    fd = open(filename, O_EXCL|O_CREAT|O_WRONLY|O_TRUNC
+    (void) pyunlink(filename);
+    fd = pyopen(filename, O_EXCL|O_CREAT|O_WRONLY|O_TRUNC
 #ifdef O_BINARY
                             |O_BINARY   /* necessary for Windows */
 #endif

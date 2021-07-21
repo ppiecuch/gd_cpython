@@ -20,10 +20,13 @@ static bool py_has_error();
 static String object_to_string(PyObject *p_val);
 static py::object py_eval(const char *expr, const py::object &o = py::none());
 static py::object py_call(py::object p_obj, String p_func_name, py::args p_args = py::args());
-static py::object py_call(String p_func_name, py::args p_args, String p_module = "__main__");
+static py::object py_call(String p_func_name, py::args p_args = py::args(), String p_module = "__main__");
 
 constexpr const char *__init_func = "gd_init";
 constexpr const char *__tick_func = "gd_tick";
+constexpr const char *__draw_func = "gd_draw";
+constexpr const char *__event_func = "gd_event";
+constexpr const char *__term_func = "gd_term";
 
 CPythonRun::CPythonRun(Node2D *p_owner) {
 	static char exec_name[] = "pygodot";
@@ -89,13 +92,48 @@ void CPythonRun::run_file(const String& p_python_file) {
 
 // Node instance
 
+void CPythonInstance::_input(const Ref<InputEvent> &p_event) {
+	ERR_FAIL_COND(p_event.is_null());
+
+	if (Engine::get_singleton()->is_editor_hint()) {
+		return;
+	}
+
+	if (!get_tree()) {
+		return;
+	}
+
+	ERR_FAIL_COND(!is_visible_in_tree());
+
+	if (const InputEventMouseMotion *m = cast_to<InputEventMouseMotion>(*p_event)) {
+		if (_running) {
+			if (!py_app.is(py::none())) {
+				GdEvent ev(GdEvent::MOUSEMOTION, m->get_position());
+				py_call(py_app, __event_func, py::make_tuple(ev));
+			}
+		}
+	}
+}
+
 void CPythonInstance::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_ENTER_TREE: {
 			set_process(true);
+			if (!Engine::get_singleton()->is_editor_hint()) {
+				set_process_input(is_visible_in_tree());
+			}
 		} break;
 		case NOTIFICATION_EXIT_TREE: {
 			set_process(false);
+			set_process_input(false);
+		} break;
+		case NOTIFICATION_DRAW: {
+			if (_running) {
+				// call draw function
+				if (!py_app.is(py::none())) {
+					py_call(py_app, __draw_func);
+				}
+			}
 		} break;
 		case NOTIFICATION_READY: {
 			if (_cpython.is_null()) {
@@ -105,16 +143,20 @@ void CPythonInstance::_notification(int p_what) {
 				if (!python_file.empty() && _last_file_run != python_file) {
 					_cpython->run_file(python_file);
 					_last_file_run = python_file;
+					_running = !py_has_error();
 				}
 				if (!python_code.empty() && _last_code_run != python_code.md5_text()) {
 					_cpython->run_code(python_code);
 					_last_code_run = python_code.md5_text();
+					_running = !py_has_error();
 				}
-				if (!python_gd_build_func.empty()) {
-					py_app = py_call(python_gd_build_func, py::make_tuple(get_instance_id()));
-				}
-				if (!py_app.is(py::none())) {
-					py_call(py_app, __init_func);
+				if (_running) {
+					if (!python_gd_build_func.empty()) {
+						py_app = py_call(python_gd_build_func, py::make_tuple(get_instance_id()));
+					}
+					if (!py_app.is(py::none())) {
+						py_call(py_app, __init_func);
+					}
 				}
 			}
 		} break;
@@ -123,10 +165,26 @@ void CPythonInstance::_notification(int p_what) {
 				// call tick function
 				if (!py_app.is(py::none())) {
 					const real_t delta = get_process_delta_time();
-					py_call(py_app, __tick_func, py::make_tuple(delta));
+					auto r = py_call(py_app, __tick_func, py::make_tuple(delta));
+					if (!r.is(py::none())) {
+						if (r.cast<bool>()) {
+							update();
+						}
+					}
 				}
 			}
-		}
+		} break;
+		case NOTIFICATION_VISIBILITY_CHANGED: {
+			if (!Engine::get_singleton()->is_editor_hint()) {
+				set_process_input(is_visible_in_tree());
+			}
+		} break;
+		case NOTIFICATION_PAUSED: {
+			_pausing = true;
+		} break;
+		case NOTIFICATION_UNPAUSED: {
+			_pausing = false;
+		} break;
 	}
 }
 
@@ -196,6 +254,8 @@ void CPythonInstance::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_verbose_level"), &CPythonInstance::set_verbose_level);
 	ClassDB::bind_method(D_METHOD("get_verbose_level"), &CPythonInstance::get_verbose_level);
 
+	ClassDB::bind_method(D_METHOD("_input"), &CPythonInstance::_input);
+
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "autorun"), "set_autorun", "is_autorun");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "gd_build_func"), "set_gd_build_func", "get_gd_build_func");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "python_code", PROPERTY_HINT_MULTILINE_TEXT, "", PROPERTY_USAGE_DEFAULT_INTL), "set_python_code", "get_python_code");
@@ -209,6 +269,7 @@ void CPythonInstance::_bind_methods() {
 
 CPythonInstance::CPythonInstance() {
 	_running = false;
+	_pausing = false;
 	_dirty = false;
 
 	python_gd_build_func = "_gd_build";
@@ -290,7 +351,7 @@ static py::object py_eval(const char *expr, const py::object &o) {
 		}
 #ifdef DEBUG_ENABLED
 		if (!res.is(py::none())) {
-			py::print("Return value:", res);
+			py::print("Return value from expression:", res);
 		}
 #endif
 	} catch (py::error_already_set &e) {
@@ -311,22 +372,22 @@ static py::object py_call(py::object p_obj, String p_func_name, py::args p_args)
 	auto r = p_obj.attr(p_func_name.utf8().get_data())(*p_args);
 #ifdef DEBUG_ENABLED
 	if (!r.is(py::none())) {
-		py::print("Return value: ", p_func_name, " -> ", r);
+		py::print("Return value: ", p_func_name.utf8().get_data(), " -> ", r);
 	}
 #endif
 	return r;
 }
 
 static py::object py_call(String p_func_name, py::args p_args, String p_module) {
-	String module = p_module;
-	String function = p_func_name;
+	std::string module = p_module.utf8().get_data();
+	std::string function = p_func_name.utf8().get_data();
 
 	if (module.empty()) {
 		module = "__main__";
 	}
 
-	auto m = py::module::import(module.utf8().get_data());
-	auto r = m.attr(function.utf8().get_data())(*p_args);
+	auto m = py::module::import(module.c_str());
+	auto r = m.attr(function.c_str())(*p_args);
 #ifdef DEBUG_ENABLED
 	if (!r.is(py::none())) {
 		py::print("Return value: ", function, " -> ", r);

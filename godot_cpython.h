@@ -39,13 +39,14 @@ class CPythonInstance : public Node2D {
 	pybind11::object py_app;
 
 	Ref<CPythonRun> _cpython;
-	bool _running;
+	bool _running, _pausing;
 	String _last_file_run;
 	String _last_code_run;
 	bool _dirty;
 
 protected:
 	void _notification(int p_what);
+	void _input(const Ref<InputEvent> &p_event);
 	static void _bind_methods();
 
 public:

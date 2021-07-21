@@ -22,6 +22,7 @@ typedef struct PYFILE PYFILE;
 
 int _gd_chdir(const char* dir);
 char *_gd_getcwd(char *buf, int size);
+int _gd_unlink(const char* path);
 
 int _gd_open(const char* name, int flags, ...);
 int _gd_close(int fd);
@@ -62,6 +63,7 @@ PYFILE *_gd_stdout();
 
 #define pychdir    _gd_chdir
 #define pygetcwd   _gd_getcwd
+#define pyunlink   _gd_unlink
 
 #define pyopen     _gd_open
 #define pyclose    _gd_close
@@ -107,6 +109,7 @@ typedef FILE PYFILE;
 
 #define pychdir    chdir
 #define pygetcwd   getcwd
+#define pyunlink   unlink
 
 #define pyopen     open
 #define pyclose    close

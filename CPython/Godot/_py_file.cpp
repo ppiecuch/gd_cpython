@@ -13,6 +13,7 @@
 #include <map>
 #include <memory>
 
+#define SUCCESS (0)
 #define FAILURE (-1)
 
 enum ExModeFlags {
@@ -134,7 +135,7 @@ static PYFILE gd_stderr;
 
 handle_map<PYFILE*> _handles(1, 32);
 
-int _gd_open(const char* name, int flags) {
+int _gd_open(const char* name, int flags, ...) {
 	PYFILE *f = PYFILE::fopen(name, flags);
 	if (f) {
 		return _handles.insert(f).value;
@@ -215,12 +216,18 @@ PYFILE *_gd_fopen(const char* name, const char *mode) {
 }
 
 PYFILE *_gd_fdopen(const int fd, const char *mode) {
+	if (fd > 0) {
+		const Id_T t = { .value = uint32_t(fd) };
+		if (_handles.is_valid(t)) {
+			return _handles[t];
+		}
+	}
 	return nullptr;
 }
 
-static bool _is_link(String p_dir) {
-	DirAccessRef da(DirAccess::create_for_path(p_dir));
-	return da->is_link(p_dir);
+static bool _is_link(const String &path) {
+	DirAccessRef da(DirAccess::create_for_path(path));
+	return da->is_link(path);
 }
 
 int _gd_chdir(const char *dir) {
@@ -250,6 +257,11 @@ char *_gd_getcwd(char *buf, int size) {
 	return nullptr;
 }
 
+int _gd_unlink(const char *path) {
+	DirAccessRef da(DirAccess::create_for_path(path));
+	return da->remove(path) == OK ? SUCCESS : FAILURE;
+}
+
 int _gd_fstat(PYFILE *f, struct stat *buf) {
 	if (f) {
 		String path = f->fa->get_path();
@@ -257,7 +269,7 @@ int _gd_fstat(PYFILE *f, struct stat *buf) {
 		else if (FileAccess::exists(path)) buf->st_mode = S_IFREG;
 		else return FAILURE;
 		buf->st_mtime = buf->st_mtime = FileAccess::get_modified_time(path);
-		return 0;
+		return SUCCESS;
 	}
 	return FAILURE;
 }
@@ -268,14 +280,14 @@ int _gd_stat(const char *path, struct stat *buf) {
 	else return FAILURE;
 	if (_is_link(path)) buf->st_mode = S_IFLNK;
 	buf->st_mtime = buf->st_mtime = FileAccess::get_modified_time(path);
-	return 0;
+	return SUCCESS;
 }
 
 int _gd_fclose(PYFILE *f) {
 	if (f) {
 		if (f->fa) {
 			f->fa->close();
-			return 0;
+			return SUCCESS;
 		} else {
 			return FAILURE;
 		}
@@ -291,7 +303,7 @@ int _gd_fseek(PYFILE *f, off_t offset, int whence) {
 			case SEEK_END: f->fa->seek_end(offset); break;
 			default: return FAILURE;
 		}
-		return 0;
+		return SUCCESS;
 	}
 	return FAILURE;
 }
@@ -311,7 +323,7 @@ ssize_t _gd_fread(void* buf, size_t len, size_t cnt, PYFILE *f) {
 	if (f) {
 		return f->fa->get_buffer((uint8_t*)buf, cnt * len);
 	}
-	return 0;
+	return SUCCESS;
 }
 
 ssize_t _gd_fwrite(const void* buf, size_t len, size_t cnt, PYFILE *f) {
@@ -407,9 +419,9 @@ char *_gd_fgets(char* buf, size_t len, PYFILE *f) {
 int _gd_fputs(const char* buf, PYFILE *f) {
 	if (f) {
 		if (f->fa) {
-			f->fa->store_line(String(buf));
+			f->fa->store_string(String(buf));
 		} else if (f == _gd_stdout()) {
-			puts(buf);
+			fputs(buf, stdout);
 		} else if (f == _gd_stderr()) {
 			fputs(buf, stderr);
 		} else if (f == _gd_stdin()) {
@@ -480,7 +492,7 @@ int _gd_fflush(PYFILE *f) {
 		} else {
 			WARN_PRINT("Undefined file access - information lost.");
 		}
-		return 0;
+		return SUCCESS;
 	}
 	return EOF;
 }
@@ -512,7 +524,7 @@ ssize_t _gd_ffilesize(PYFILE *f) {
 	if (f) {
 		return f->fa->get_len();
 	}
-	return 0;
+	return SUCCESS;
 }
 
 PYFILE *_gd_stderr() {

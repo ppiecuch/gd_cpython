@@ -426,12 +426,12 @@ PyInt_FromUnicode(Py_UNICODE *s, Py_ssize_t length, int base)
 
 /* ARGSUSED */
 static int
-int_print(PyIntObject *v, FILE *fp, int flags)
+int_print(PyIntObject *v, PYFILE *fp, int flags)
      /* flags -- not used but required by interface */
 {
     long int_val = v->ob_ival;
     Py_BEGIN_ALLOW_THREADS
-    fprintf(fp, "%ld", int_val);
+    pyfprintf(fp, "%ld", int_val);
     Py_END_ALLOW_THREADS
     return 0;
 }

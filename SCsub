@@ -5,7 +5,7 @@ import platform
 Import("env")
 Import("env_modules")
 
-env_module = env_modules.Clone()
+env_module = env.Clone()
 env_module.Append(CPPPATH=[".", "pylib", "pylib/config", "pylib/include", "CPython/Include", "CPython/Godot"])
 env_module.Append(CPPDEFINES=["GD_PYTHON"])
 
