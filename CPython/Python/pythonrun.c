@@ -285,6 +285,7 @@ Py_InitializeEx(int install_sigs)
        stdin and stdout if these are terminals, unless overridden.  */
 
     if (!overridden || !Py_FileSystemDefaultEncoding) {
+#ifdef HAVE_NL_LANGINFO
         saved_locale = strdup(setlocale(LC_CTYPE, NULL));
         setlocale(LC_CTYPE, "");
         loc_codeset = nl_langinfo(CODESET);
@@ -303,7 +304,10 @@ Py_InitializeEx(int install_sigs)
                 }
             }
         } else
+#endif
+        {
             loc_codeset = NULL;
+        }
         setlocale(LC_CTYPE, saved_locale);
         free(saved_locale);
 

@@ -4,13 +4,6 @@
 #include "core/rid.h"
 #include "servers/visual_server.h"
 
-#ifndef _HAS_EXCEPTIONS
-// https://gcc.gnu.org/onlinedocs/libstdc++/manual/using_exceptions.html
-#define throw
-#define try          if (true)
-#define catch(...)   if (false)
-#endif
-
 #include "pylib/godot/py_godot.h"
 
 namespace py = pybind11;
@@ -92,6 +85,10 @@ void CPythonRun::run_file(const String& p_python_file) {
 
 // Node instance
 
+struct CPythonInstance::InstancePrivateData : public Reference {
+	pybind11::object py_app;
+};
+
 void CPythonInstance::_input(const Ref<InputEvent> &p_event) {
 	ERR_FAIL_COND(p_event.is_null());
 
@@ -107,9 +104,9 @@ void CPythonInstance::_input(const Ref<InputEvent> &p_event) {
 
 	if (const InputEventMouseMotion *m = cast_to<InputEventMouseMotion>(*p_event)) {
 		if (_running) {
-			if (!py_app.is(py::none())) {
+			if (!p->py_app.is(py::none())) {
 				GdEvent ev(GdEvent::MOUSEMOTION, m->get_position());
-				py_call(py_app, __event_func, py::make_tuple(ev));
+				py_call(p->py_app, __event_func, py::make_tuple(ev));
 			}
 		}
 	}
@@ -130,8 +127,8 @@ void CPythonInstance::_notification(int p_what) {
 		case NOTIFICATION_DRAW: {
 			if (_running) {
 				// call draw function
-				if (!py_app.is(py::none())) {
-					py_call(py_app, __draw_func);
+				if (!p->py_app.is(py::none())) {
+					py_call(p->py_app, __draw_func);
 				}
 			}
 		} break;
@@ -152,10 +149,10 @@ void CPythonInstance::_notification(int p_what) {
 				}
 				if (_running) {
 					if (!python_gd_build_func.empty()) {
-						py_app = py_call(python_gd_build_func, py::make_tuple(get_instance_id()));
+						p->py_app = py_call(python_gd_build_func, py::make_tuple(get_instance_id()));
 					}
-					if (!py_app.is(py::none())) {
-						py_call(py_app, __init_func);
+					if (!p->py_app.is(py::none())) {
+						py_call(p->py_app, __init_func);
 					}
 				}
 			}
@@ -163,9 +160,9 @@ void CPythonInstance::_notification(int p_what) {
 		case NOTIFICATION_PROCESS: {
 			if (_running) {
 				// call tick function
-				if (!py_app.is(py::none())) {
+				if (!p->py_app.is(py::none())) {
 					const real_t delta = get_process_delta_time();
-					auto r = py_call(py_app, __tick_func, py::make_tuple(delta));
+					auto r = py_call(p->py_app, __tick_func, py::make_tuple(delta));
 					if (!r.is(py::none())) {
 						if (r.cast<bool>()) {
 							update();
@@ -267,7 +264,7 @@ void CPythonInstance::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("python_code_changed"));
 }
 
-CPythonInstance::CPythonInstance() {
+CPythonInstance::CPythonInstance() : p(memnew(InstancePrivateData)) {
 	_running = false;
 	_pausing = false;
 	_dirty = false;

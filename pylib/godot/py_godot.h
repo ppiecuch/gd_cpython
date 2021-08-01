@@ -23,9 +23,11 @@
 #include "scene/resources/texture.h"
 #include "scene/resources/font.h"
 #include "scene/resources/dynamic_font.h"
+#include "common/gd_core.h"
 
 #include <iostream>
 #include <string>
+#include <memory>
 #include <tuple>
 
 #include "default_ttf.gen.h"
@@ -177,7 +179,7 @@ struct RenderLaterCmd {
 };
 
 // Available Surface types
-struct GdSurfaceImpl : public Reference {
+struct GdSurfaceImpl {
 	enum Type {
 		TEXTURE_SURFACE,
 		TEXT_SURFACE,
@@ -223,8 +225,8 @@ struct GdTextureSurface : public GdSurfaceImpl {
 	int get_width() const { ERR_FAIL_NULL_V(texture, 1); return texture->get_width(); }
 	int get_height() const { ERR_FAIL_NULL_V(texture, 1); return texture->get_height(); }
 
-	GdTextureSurface(const std::string &filename) {
-		texture = ResourceLoader::load(filename.c_str(), "Texture");
+	GdTextureSurface(const String &filename) {
+		texture = ResourceLoader::load(filename, "Texture");
 	}
 };
 
@@ -310,19 +312,26 @@ struct GdDisplaySurface : public GdSurfaceImpl {
 
 // Wrapper around Image/Texture/Sprite object
 struct GdSurface {
-	Ref<GdSurfaceImpl> impl;
+	std::unique_ptr<GdSurfaceImpl> impl;
 	std::vector<RenderLaterCmd> _render_later;
 
-	GdDisplaySurface *get_as_display() const { return (GdDisplaySurface*)impl.ptr(); }
-	GdColorSurface *get_as_color() const { return (GdColorSurface*)impl.ptr(); }
-	GdTextureSurface *get_as_texture() const { return (GdTextureSurface*)impl.ptr(); }
-	GdTextSurface *get_as_text() const { return (GdTextSurface*)impl.ptr(); }
+	GdDisplaySurface *get_as_display() const { return (GdDisplaySurface*)impl.get(); }
+	GdColorSurface *get_as_color() const { return (GdColorSurface*)impl.get(); }
+	GdTextureSurface *get_as_texture() const { return (GdTextureSurface*)impl.get(); }
+	GdTextSurface *get_as_text() const { return (GdTextSurface*)impl.get(); }
 
-	GdSurface(const Ref<GdSurfaceImpl> &surf_impl) : impl(surf_impl) { }
-	GdSurface(int surf_width, int surf_height) : impl(memnew(GdColorSurface(surf_width, surf_height))) { }
+	GdSurface(std::unique_ptr<GdSurfaceImpl> &&surf_impl) : impl(std::move(surf_impl)) { }
+	GdSurface(int surf_width, int surf_height)
+		: impl(std::unique_ptr<GdSurfaceImpl>(memnew(GdColorSurface(surf_width, surf_height)))) { }
+	GdSurface(const Ref<Font> &font, const String &text, const Color &color)
+		: impl(std::unique_ptr<GdSurfaceImpl>(memnew(GdTextSurface(font, text, color)))) { }
+	GdSurface(const String &filename)
+		: impl(std::unique_ptr<GdSurfaceImpl>(memnew(GdTextureSurface(filename)))) { }
+	GdSurface(int &instance_id)
+		: impl(std::unique_ptr<GdSurfaceImpl>(memnew(GdDisplaySurface(instance_id)))) { }
 	~GdSurface() { }
 
-	GdSurface convert_alpha() { return *this; }
+	GdSurface &convert_alpha() { return *this; }
 
 	int get_width() const { ERR_FAIL_NULL_V(impl, 1); return impl->get_width(); }
 	int get_height() const { ERR_FAIL_NULL_V(impl, 1); return impl->get_height(); }
@@ -404,7 +413,7 @@ struct GdSurface {
 			case GdSurfaceImpl::TEXTURE_SURFACE: {
 				switch(source.impl->get_surface_type()) {
 					case GdSurfaceImpl::TEXTURE_SURFACE: {
-						GdTextureSurface *surf = (GdTextureSurface*)source.impl.ptr();
+						GdTextureSurface *surf = (GdTextureSurface*)source.impl.get();
 						switch (dest.size()) {
 							case 2: {
 								_render_later.push_back(RenderLaterCmd(surf->texture, Point2(dest[0], dest[1]), area));
@@ -421,7 +430,7 @@ struct GdSurface {
 			case GdSurfaceImpl::TEXT_SURFACE: {
 			} break;
 			case GdSurfaceImpl::DISPLAY_SURFACE: {
-				GdDisplaySurface *disp = (GdDisplaySurface*)impl.ptr();
+				GdDisplaySurface *disp = (GdDisplaySurface*)impl.get();
 				switch(source.impl->get_surface_type()) {
 					case GdSurfaceImpl::DISPLAY_SURFACE: {
 						WARN_PRINT("Not supported");
@@ -433,7 +442,7 @@ struct GdSurface {
 						WARN_PRINT("Not supported");
 					} break;
 					case GdSurfaceImpl::TEXTURE_SURFACE: {
-						GdTextureSurface *surf = (GdTextureSurface*)source.impl.ptr();
+						GdTextureSurface *surf = (GdTextureSurface*)source.impl.get();
 						switch (dest.size()) {
 							case 2: {
 								disp->blit_texture(surf->texture, Point2(dest[0], dest[1]), area);
@@ -560,8 +569,8 @@ struct GdFont {
 		}
 	}
 
-	GdSurface render(const std::string &text, bool alias, const std::vector<float> &color) {
-		return Ref<GdSurfaceImpl>(memnew(GdTextSurface(font, String(text.c_str()), vec_to_color(color))));
+	GdSurface &&render(const std::string &text, bool alias, const std::vector<float> &color) {
+		return std::move(GdSurface(font, String(text.c_str()), vec_to_color(color)));
 	}
 };
 
@@ -609,14 +618,14 @@ namespace event {
 } // event
 
 namespace image {
-	GdSurface load(const std::string &filename) {
-		return Ref<GdSurfaceImpl>(memnew(GdTextureSurface(filename)));
+	GdSurface &&load(const std::string &filename) {
+		return std::move(GdSurface(String(filename.c_str())));
 	}
 } // image
 
 namespace display {
 	void set_caption(const std::string &caption) { }
-	GdSurface get_surface(int instance_id) { return Ref<GdSurfaceImpl>(memnew(GdDisplaySurface(instance_id))); }
+	GdSurface &&get_surface(int instance_id) { return std::move(GdSurface(instance_id)); }
 	void flip(int instance_id) {
 		if (Object *parent = ObjectDB::get_instance(instance_id)) {
 			if (Node2D *canvas = Object::cast_to<Node2D>(parent)) {

@@ -199,6 +199,7 @@ PyLocale_setlocale(PyObject* self, PyObject* args)
     return result_object;
 }
 
+#ifdef HAVE_LOCALECONV
 PyDoc_STRVAR(localeconv__doc__,
 "() -> dict. Returns numeric and monetary locale-specific parameters.");
 
@@ -267,6 +268,7 @@ PyLocale_localeconv(PyObject* self)
     Py_XDECREF(x);
     return NULL;
 }
+#endif /* HAVE_LOCALECONV */
 
 PyDoc_STRVAR(strcoll__doc__,
 "string,string -> int. Compares two strings according to the locale.");
@@ -525,6 +527,7 @@ static struct langinfo_constant{
     {0, 0}
 };
 
+#ifdef HAVE_NL_LANGINFO
 PyDoc_STRVAR(nl_langinfo__doc__,
 "nl_langinfo(key) -> string\n"
 "Return the value for the locale information associated with key.");
@@ -548,6 +551,7 @@ PyLocale_nl_langinfo(PyObject* self, PyObject* args)
     PyErr_SetString(PyExc_ValueError, "unsupported langinfo constant");
     return NULL;
 }
+#endif /* HAVE_NL_LANGINFO */
 #endif /* HAVE_LANGINFO_H */
 
 #ifdef HAVE_LIBINTL_H
@@ -655,8 +659,10 @@ PyIntl_bind_textdomain_codeset(PyObject* self,PyObject*args)
 static struct PyMethodDef PyLocale_Methods[] = {
   {"setlocale", (PyCFunction) PyLocale_setlocale,
    METH_VARARGS, setlocale__doc__},
+#ifdef HAVE_LOCALECONV
   {"localeconv", (PyCFunction) PyLocale_localeconv,
    METH_NOARGS, localeconv__doc__},
+#endif
   {"strcoll", (PyCFunction) PyLocale_strcoll,
    METH_VARARGS, strcoll__doc__},
   {"strxfrm", (PyCFunction) PyLocale_strxfrm,
@@ -664,7 +670,7 @@ static struct PyMethodDef PyLocale_Methods[] = {
 #if defined(MS_WINDOWS)
   {"_getdefaultlocale", (PyCFunction) PyLocale_getdefaultlocale, METH_NOARGS},
 #endif
-#ifdef HAVE_LANGINFO_H
+#if defined(HAVE_LANGINFO_H) && defined(HAVE_NL_LANGINFO)
   {"nl_langinfo", (PyCFunction) PyLocale_nl_langinfo,
    METH_VARARGS, nl_langinfo__doc__},
 #endif

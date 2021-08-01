@@ -376,8 +376,11 @@ Py_LOCAL_INLINE(void)
 change_decimal_from_locale_to_dot(char* buffer)
 {
     struct lconv *locale_data = localeconv();
+#ifdef HAVE_LOCALECONV
     const char *decimal_point = locale_data->decimal_point;
-
+#else
+    const char *decimal_point = ".";
+#endif
     if (decimal_point[0] != '.' || decimal_point[1] != 0) {
         size_t decimal_point_len = strlen(decimal_point);
 

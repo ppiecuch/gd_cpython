@@ -115,7 +115,9 @@
 #define HAVE_CLOCK 1
 
 /* Define to 1 if you have the `confstr' function. */
+#ifndef __ANDROID__
 #define HAVE_CONFSTR 1
+#endif
 
 /* Define to 1 if you have the <conio.h> header file. */
 /* #undef HAVE_CONIO_H */
@@ -124,10 +126,14 @@
 #define HAVE_COPYSIGN 1
 
 /* Define to 1 if you have the `ctermid' function. */
+#ifndef __ANDROID__
 #define HAVE_CTERMID 1
+#endif
 
 /* Define if you have the 'ctermid_r' function. */
+#ifndef __ANDROID__
 #define HAVE_CTERMID_R 1
+#endif
 
 /* Define to 1 if you have the <curses.h> header file. */
 #define HAVE_CURSES_H 1
@@ -158,13 +164,17 @@
 /* #undef HAVE_DECL_TZNAME */
 
 /* Define to 1 if you have the device macros. */
+#ifndef __ANDROID__
 #define HAVE_DEVICE_MACROS 1
+#endif
 
 /* Define if we have /dev/ptc. */
 /* #undef HAVE_DEV_PTC */
 
 /* Define if we have /dev/ptmx. */
+#ifndef __ANDROID__
 #define HAVE_DEV_PTMX 1
+#endif
 
 /* Define to 1 if you have the <direct.h> header file. */
 /* #undef HAVE_DIRECT_H */
@@ -228,7 +238,11 @@
 #define HAVE_FORK 1
 
 /* Define to 1 if you have the `forkpty' function. */
+#ifndef __ANDROID__
+#ifndef forkpty
 #define HAVE_FORKPTY 1
+#endif
+#endif
 
 /* Define to 1 if you have the `fpathconf' function. */
 #define HAVE_FPATHCONF 1
@@ -249,7 +263,9 @@
 #define HAVE_FTELLO 1
 
 /* Define to 1 if you have the `ftime' function. */
+#ifndef __ANDROID__
 #define HAVE_FTIME 1
+#endif
 
 /* Define to 1 if you have the `ftruncate' function. */
 #define HAVE_FTRUNCATE 1
@@ -262,7 +278,9 @@
 
 /* Define if we can use gcc inline assembler to get and set x87 control word
  */
+#if defined(__x86_64__) || defined(_M_X64) || defined(i386) || defined(__i386__) || defined(__i386) || defined(_M_IX86)
 #define HAVE_GCC_ASM_FOR_X87 1
+#endif
 
 /* Define if you have the getaddrinfo function. */
 #define HAVE_GETADDRINFO 1
@@ -295,7 +313,9 @@
 #define HAVE_GETITIMER 1
 
 /* Define to 1 if you have the `getloadavg' function. */
+#ifndef __ANDROID__
 #define HAVE_GETLOADAVG 1
+#endif
 
 /* Define to 1 if you have the `getlogin' function. */
 #define HAVE_GETLOGIN 1
@@ -379,10 +399,19 @@
 #define HAVE_KILLPG 1
 
 /* Define if you have the 'kqueue' functions. */
+#ifndef __ANDROID__
 #define HAVE_KQUEUE 1
+#endif
 
 /* Define to 1 if you have the <langinfo.h> header file. */
 #define HAVE_LANGINFO_H 1
+
+/* Define to 1 if you have the `nl_langinfo' function. */
+#ifndef __ANDROID__
+#define HAVE_NL_LANGINFO
+#elif __ANDROID_API__ > 25
+#define HAVE_NL_LANGINFO
+#endif
 
 /* Defined to enable large file support when an off_t is bigger than a long
  and long long is available and at least as big as an off_t. You may need to
@@ -398,7 +427,9 @@
 /* #undef HAVE_LCHFLAGS */
 
 /* Define to 1 if you have the `lchmod' function. */
+#ifndef __ANDROID__
 #define HAVE_LCHMOD 1
+#endif
 
 /* Define to 1 if you have the `lgamma' function. */
 #define HAVE_LGAMMA 1
@@ -428,10 +459,17 @@
 #define HAVE_LINK 1
 
 /* Define to 1 if you have the <linux/netlink.h> header file. */
-/* #undef HAVE_LINUX_NETLINK_H */
+#if defined(__ANDROID__) && defined(__linux__)
+#define HAVE_LINUX_NETLINK_H
+#endif
 
 /* Define to 1 if you have the <linux/tipc.h> header file. */
 /* #undef HAVE_LINUX_TIPC_H */
+
+/* Define to 1 if you have the `localeconv' function. */
+#ifndef __ANDROID__
+#define HAVE_LOCALECONV 1
+#endif
 
 /* Define to 1 if you have the `log1p' function. */
 #define HAVE_LOG1P 1
@@ -446,7 +484,9 @@
 #define HAVE_LSTAT 1
 
 /* Define this if you have the makedev macro. */
+#ifndef __ANDROID__
 #define HAVE_MAKEDEV 1
+#endif
 
 /* Define to 1 if you have the `memmove' function. */
 #define HAVE_MEMMOVE 1
@@ -479,7 +519,9 @@
 #define HAVE_NICE 1
 
 /* Define to 1 if you have the `openpty' function. */
+#ifndef __ANDROID__
 #define HAVE_OPENPTY 1
+#endif
 
 /* Define if compiling using MacOS X 10.5 SDK or later. */
 #define HAVE_OSX105_SDK 1
@@ -635,7 +677,9 @@
 #define HAVE_SNPRINTF 1
 
 /* Define if sockaddr has sa_len member */
+#ifndef __ANDROID__
 #define HAVE_SOCKADDR_SA_LEN 1
+#endif
 
 /* struct sockaddr_storage (sys/socket.h) */
 #define HAVE_SOCKADDR_STORAGE 1
@@ -649,11 +693,13 @@
 /* Define if your compiler provides ssize_t */
 #define HAVE_SSIZE_T 1
 
+#ifdef __ANDROID__
 /* Define if you have struct stat.st_mtim.tv_nsec */
-/* #undef HAVE_STAT_TV_NSEC */
-
+#define HAVE_STAT_TV_NSEC
+#else
 /* Define if you have struct stat.st_mtimensec */
 #define HAVE_STAT_TV_NSEC2 1
+#endif
 
 /* Define if your compiler supports variable length function prototypes (e.g.
  void fprintf(FILE *, char *, ...);) *and* <stdarg.h> */
@@ -664,6 +710,11 @@
 
 /* Define to 1 if you have the <stdlib.h> header file. */
 #define HAVE_STDLIB_H 1
+
+/* Define to 1 if you have the `stpcpy' function. */
+#ifndef __ANDROID__
+#define HAVE_STPCPY 1
+#endif
 
 /* Define to 1 if you have the `strdup' function. */
 #define HAVE_STRDUP 1
@@ -681,7 +732,9 @@
 /* #undef HAVE_STROPTS_H */
 
 /* Define to 1 if `st_birthtime' is a member of `struct stat'. */
+#ifndef __ANDROID__
 #define HAVE_STRUCT_STAT_ST_BIRTHTIME 1
+#endif
 
 /* Define to 1 if `st_blksize' is a member of `struct stat'. */
 #define HAVE_STRUCT_STAT_ST_BLKSIZE 1
@@ -690,10 +743,14 @@
 #define HAVE_STRUCT_STAT_ST_BLOCKS 1
 
 /* Define to 1 if `st_flags' is a member of `struct stat'. */
+#ifndef __ANDROID__
 #define HAVE_STRUCT_STAT_ST_FLAGS 1
+#endif
 
 /* Define to 1 if `st_gen' is a member of `struct stat'. */
+#ifndef __ANDROID__
 #define HAVE_STRUCT_STAT_ST_GEN 1
+#endif
 
 /* Define to 1 if `st_rdev' is a member of `struct stat'. */
 #define HAVE_STRUCT_STAT_ST_RDEV 1
@@ -728,7 +785,9 @@
 /* #undef HAVE_SYS_EPOLL_H */
 
 /* Define to 1 if you have the <sys/event.h> header file. */
+#ifndef __ANDROID__
 #define HAVE_SYS_EVENT_H 1
+#endif
 
 /* Define to 1 if you have the <sys/file.h> header file. */
 #define HAVE_SYS_FILE_H 1
@@ -859,7 +918,9 @@
 /* #undef HAVE_USABLE_WCHAR_T */
 
 /* Define to 1 if you have the <util.h> header file. */
+#ifndef __ANDROID__
 #define HAVE_UTIL_H 1
+#endif
 
 /* Define to 1 if you have the `utimes' function. */
 #define HAVE_UTIMES 1
@@ -868,7 +929,9 @@
 #define HAVE_UTIME_H 1
 
 /* Define to 1 if you have the `wait3' function. */
+#ifndef __ANDROID__
 #define HAVE_WAIT3 1
+#endif
 
 /* Define to 1 if you have the `wait4' function. */
 #define HAVE_WAIT4 1

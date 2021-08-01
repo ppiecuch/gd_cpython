@@ -11,6 +11,15 @@ static char progPath[MAXPATHLEN+1];
 static char modulePathes[1024+1];
 static char execPrefixPath[MAXPATHLEN+1];
 
+#ifndef HAVE_STPCPY
+char *stpcpy(char *__restrict__ dest, const char *__restrict__ src)
+{
+	while ((*dest++ = *src++) != '\0')
+		/* nothing */;
+	return --dest;
+}
+#endif
+
 static void calcPathes()
 {
 	if(pathCalculated) return;

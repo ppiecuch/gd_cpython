@@ -640,10 +640,16 @@ get_locale_info(int type, LocaleInfo *locale_info)
 {
     switch (type) {
     case LT_CURRENT_LOCALE: {
+#ifdef HAVE_LOCALECONV
         struct lconv *locale_data = localeconv();
         locale_info->decimal_point = locale_data->decimal_point;
         locale_info->thousands_sep = locale_data->thousands_sep;
         locale_info->grouping = locale_data->grouping;
+#else
+        locale_info->decimal_point = ".";
+        locale_info->thousands_sep = ",";
+        locale_info->grouping = "\3";
+#endif
         break;
     }
     case LT_DEFAULT_LOCALE:

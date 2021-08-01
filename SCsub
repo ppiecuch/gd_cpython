@@ -6,8 +6,10 @@ Import("env")
 Import("env_modules")
 
 env_module = env.Clone()
-env_module.Append(CPPPATH=[".", "pylib", "pylib/config", "pylib/include", "CPython/Include", "CPython/Godot"])
+env_module.Append(CPPPATH=["#modules/gdextensions", ".", "pylib", "pylib/config", "pylib/include", "CPython/Include", "CPython/Godot"])
 env_module.Append(CPPDEFINES=["GD_PYTHON"])
+if env["platform"] == "android" or env["platform"] == "iphone":
+	env_module.Append(CPPFLAGS=["-frtti", "-fexceptions"])
 
 sources = [
 	"CPython/Python/_warnings.c",
