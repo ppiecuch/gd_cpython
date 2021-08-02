@@ -5,11 +5,18 @@ import platform
 Import("env")
 Import("env_modules")
 
+search_paths = ["#modules/gdextensions", ".", "pylib", "pylib/config", "pylib/include", "CPython/Include", "CPython/Godot"]
+defines = ["GD_PYTHON"]
+
 env_module = env.Clone()
-env_module.Append(CPPPATH=["#modules/gdextensions", ".", "pylib", "pylib/config", "pylib/include", "CPython/Include", "CPython/Godot"])
-env_module.Append(CPPDEFINES=["GD_PYTHON"])
+env_module.Append(CPPPATH=search_paths)
+env_module.Append(CPPDEFINES=defines)
 if env["platform"] == "android" or env["platform"] == "iphone":
 	env_module.Append(CPPFLAGS=["-frtti", "-fexceptions"])
+
+env_glue_module = env.Clone()
+env_glue_module.Append(CPPPATH=search_paths)
+env_glue_module.Append(CPPDEFINES=defines)
 
 sources = [
 	"CPython/Python/_warnings.c",
@@ -173,8 +180,7 @@ if env["platform"] == "osx" or env["platform"] == "iphone":
 	sources += ["CPython/Python/mactoolboxglue.c"]
 
 sources += [
-	"register_types.cpp",
-	"godot_cpython.cpp",
+	"pylib/godot/py_godot.cpp"
 ]
 
 for filename in os.listdir("pylib/modules"):
@@ -187,7 +193,15 @@ for filename in os.listdir("pylib/modules"):
 # build compressed library
 env_module.Zip("pylib.zip", "CPython/Lib", ZIPROOT="modules/gd_cpython/CPython/Lib")
 
+glue_sources = [
+	"register_types.cpp",
+	"godot_cpython.cpp",
+]
+
 # Compile as a static library
 lib = env_module.Library("gd_cpython", sources)
 # Add the library as a dependency of the final executable
 env.Prepend(LIBS=[lib])
+
+lib_glue = env_glue_module.Library("gd_cpython_glue", glue_sources)
+env.Prepend(LIBS=[lib_glue])

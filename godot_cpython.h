@@ -8,9 +8,9 @@
 #include "core/variant.h"
 #include "scene/2d/node_2d.h"
 
-class CPythonRun : public Reference {
-	GDCLASS(CPythonRun, Reference);
+#include <memory>
 
+class CPythonRun {
 	String exec_file;
 	Node2D *owner;
 
@@ -23,10 +23,10 @@ public:
 	~CPythonRun();
 };
 
+struct PyGodotInstance;
+
 class CPythonInstance : public Node2D {
 	GDCLASS(CPythonInstance, Node2D);
-
-	struct InstancePrivateData;
 
 	String python_code;
 	String python_file;
@@ -35,13 +35,12 @@ class CPythonInstance : public Node2D {
 	int debug_level;
 	int verboe_level;
 
-	Ref<CPythonRun> _cpython;
+	std::unique_ptr<PyGodotInstance> _py;
+	std::unique_ptr<CPythonRun> _cpython;
 	bool _running, _pausing;
 	String _last_file_run;
 	String _last_code_run;
 	bool _dirty;
-
-	Ref<InstancePrivateData> p;
 
 protected:
 	void _notification(int p_what);

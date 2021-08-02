@@ -1,19 +1,16 @@
 #include "godot_cpython.h"
 
-#include "core/math/geometry.h"
 #include "core/rid.h"
+#include "core/engine.h"
+#include "core/math/geometry.h"
 #include "servers/visual_server.h"
 
 #include "pylib/godot/py_godot.h"
 
-namespace py = pybind11;
-using namespace py::literals;
-
 static bool py_has_error();
 static String object_to_string(PyObject *p_val);
-static py::object py_eval(const char *expr, const py::object &o = py::none());
-static py::object py_call(py::object p_obj, String p_func_name, py::args p_args = py::args());
-static py::object py_call(String p_func_name, py::args p_args = py::args(), String p_module = "__main__");
+static PyObject* import_module(const String& p_code_obj, const String& p_module_name);
+static PyObject *call_function(PyObject *p_module, String p_func_name, PyObject *p_args);
 
 constexpr const char *__init_func = "gd_init";
 constexpr const char *__tick_func = "gd_tick";
@@ -85,10 +82,6 @@ void CPythonRun::run_file(const String& p_python_file) {
 
 // Node instance
 
-struct CPythonInstance::InstancePrivateData : public Reference {
-	pybind11::object py_app;
-};
-
 void CPythonInstance::_input(const Ref<InputEvent> &p_event) {
 	ERR_FAIL_COND(p_event.is_null());
 
@@ -102,12 +95,9 @@ void CPythonInstance::_input(const Ref<InputEvent> &p_event) {
 
 	ERR_FAIL_COND(!is_visible_in_tree());
 
-	if (const InputEventMouseMotion *m = cast_to<InputEventMouseMotion>(*p_event)) {
-		if (_running) {
-			if (!p->py_app.is(py::none())) {
-				GdEvent ev(GdEvent::MOUSEMOTION, m->get_position());
-				py_call(p->py_app, __event_func, py::make_tuple(ev));
-			}
+	if (_running) {
+		if (_py->process_events(p_event, __event_func)) {
+			return;
 		}
 	}
 }
@@ -126,15 +116,12 @@ void CPythonInstance::_notification(int p_what) {
 		} break;
 		case NOTIFICATION_DRAW: {
 			if (_running) {
-				// call draw function
-				if (!p->py_app.is(py::none())) {
-					py_call(p->py_app, __draw_func);
-				}
+				_py->call(__draw_func); // call draw function
 			}
 		} break;
 		case NOTIFICATION_READY: {
-			if (_cpython.is_null()) {
-				_cpython = Ref<CPythonRun>(memnew(CPythonRun(this)));
+			if (not _cpython) {
+				_cpython = std::unique_ptr<CPythonRun>(memnew(CPythonRun(this)));
 			}
 			if (python_autorun) {
 				if (!python_file.empty() && _last_file_run != python_file) {
@@ -149,25 +136,17 @@ void CPythonInstance::_notification(int p_what) {
 				}
 				if (_running) {
 					if (!python_gd_build_func.empty()) {
-						p->py_app = py_call(python_gd_build_func, py::make_tuple(get_instance_id()));
+						_py->build_pygodot(get_instance_id(), python_gd_build_func);
 					}
-					if (!p->py_app.is(py::none())) {
-						py_call(p->py_app, __init_func);
-					}
+					_py->call(__init_func); // call init functions
 				}
 			}
 		} break;
 		case NOTIFICATION_PROCESS: {
 			if (_running) {
-				// call tick function
-				if (!p->py_app.is(py::none())) {
-					const real_t delta = get_process_delta_time();
-					auto r = py_call(p->py_app, __tick_func, py::make_tuple(delta));
-					if (!r.is(py::none())) {
-						if (r.cast<bool>()) {
-							update();
-						}
-					}
+				const real_t delta = get_process_delta_time();
+				if (_py->call(__tick_func, delta)) { // call tick function
+					update();
 				}
 			}
 		} break;
@@ -264,7 +243,7 @@ void CPythonInstance::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("python_code_changed"));
 }
 
-CPythonInstance::CPythonInstance() : p(memnew(InstancePrivateData)) {
+CPythonInstance::CPythonInstance() : _py(std::unique_ptr<PyGodotInstance>(memnew(PyGodotInstance))) {
 	_running = false;
 	_pausing = false;
 	_dirty = false;
@@ -275,7 +254,6 @@ CPythonInstance::CPythonInstance() : p(memnew(InstancePrivateData)) {
 	Py_DebugFlag = 0;
 	Py_VerboseFlag = 0;
 }
-
 
 // Python utilities
 
@@ -335,60 +313,4 @@ static PyObject *call_function(PyObject *p_module, String p_func_name, PyObject 
 	}
 	Py_XDECREF(p_args); // Release reference to arguments
 	return ret;
-}
-
-static py::object py_eval(const char *expr, const py::object &o) {
-	py::object res = py::none();
-	try {
-		if (!o.is(py::none())) {
-			auto locals = py::dict("_v"_a = o);
-			res = py::eval(expr, py::globals(), locals);
-		} else {
-			res = py::eval(expr, py::globals());
-		}
-#ifdef DEBUG_ENABLED
-		if (!res.is(py::none())) {
-			py::print("Return value from expression:", res);
-		}
-#endif
-	} catch (py::error_already_set &e) {
-		std::cout << "py_eval error_already_set: " << std::endl;
-	} catch (std::runtime_error &e) {
-		std::cout << "py_eval runtime_error: " << e.what() << std::endl;
-	} catch (...) {
-		std::cout << "py_eval unknown exception" << std::endl;
-	}
-	return res;
-}
-
-// Reference:
-// ----------
-// https://developpaper.com/using-pybind11-to-call-between-c-and-python-code-on-windows-10/
-
-static py::object py_call(py::object p_obj, String p_func_name, py::args p_args) {
-	auto r = p_obj.attr(p_func_name.utf8().get_data())(*p_args);
-#ifdef DEBUG_ENABLED
-	if (!r.is(py::none())) {
-		py::print("Return value: ", p_func_name.utf8().get_data(), " -> ", r);
-	}
-#endif
-	return r;
-}
-
-static py::object py_call(String p_func_name, py::args p_args, String p_module) {
-	std::string module = p_module.utf8().get_data();
-	std::string function = p_func_name.utf8().get_data();
-
-	if (module.empty()) {
-		module = "__main__";
-	}
-
-	auto m = py::module::import(module.c_str());
-	auto r = m.attr(function.c_str())(*p_args);
-#ifdef DEBUG_ENABLED
-	if (!r.is(py::none())) {
-		py::print("Return value: ", function, " -> ", r);
-	}
-#endif
-	return r;
 }
