@@ -1,12 +1,10 @@
 #ifndef GODOT_CPYTHON_H
 #define GODOT_CPYTHON_H
 
-#include <Python.h>
-#include <marshal.h>
-
 #include "core/reference.h"
 #include "core/variant.h"
 #include "scene/2d/node_2d.h"
+#include "common/gd_core.h"
 
 #include <memory>
 
@@ -35,8 +33,8 @@ class CPythonInstance : public Node2D {
 	int debug_level;
 	int verboe_level;
 
-	std::unique_ptr<PyGodotInstance> _py;
-	std::unique_ptr<CPythonRun> _cpython;
+	std::deleted_unique_ptr<PyGodotInstance> _py;
+	std::deleted_unique_ptr<CPythonRun> _cpython;
 	bool _running, _pausing;
 	String _last_file_run;
 	String _last_code_run;

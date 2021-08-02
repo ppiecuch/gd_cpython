@@ -7,6 +7,9 @@
 
 #include "pylib/godot/py_godot.h"
 
+#include <Python.h>
+#include <marshal.h>
+
 static bool py_has_error();
 static String object_to_string(PyObject *p_val);
 static PyObject* import_module(const String& p_code_obj, const String& p_module_name);
@@ -121,7 +124,7 @@ void CPythonInstance::_notification(int p_what) {
 		} break;
 		case NOTIFICATION_READY: {
 			if (not _cpython) {
-				_cpython = std::unique_ptr<CPythonRun>(memnew(CPythonRun(this)));
+				_cpython = std::make_gd_unique_ptr<CPythonRun>(memnew(CPythonRun(this)));
 			}
 			if (python_autorun) {
 				if (!python_file.empty() && _last_file_run != python_file) {
@@ -243,7 +246,7 @@ void CPythonInstance::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("python_code_changed"));
 }
 
-CPythonInstance::CPythonInstance() : _py(std::unique_ptr<PyGodotInstance>(memnew(PyGodotInstance))) {
+CPythonInstance::CPythonInstance() : _py(std::make_gd_unique_ptr<PyGodotInstance>(memnew(PyGodotInstance))) {
 	_running = false;
 	_pausing = false;
 	_dirty = false;
