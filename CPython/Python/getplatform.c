@@ -8,7 +8,7 @@
 #define PLATFORM "Darwin (Apple)"
 #elif defined(__linux__)
 #define PLATFORM "Linux"
-#elif defined(_WIN32) || define(WIN32)
+#elif defined(_WIN32) || defined(WIN32)
 #define PLATFORM "Windows"
 #else
 #define PLATFORM "Unknown"

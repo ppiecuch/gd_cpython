@@ -16,15 +16,22 @@
 // ----------
 // 1. https://github.com/pybind/pybind11/issues/1619
 
+#if __GNUC__
+# define _attr_visibility_hidden __attribute__ ((visibility("hidden")))
+#else
+# define _attr_visibility_hidden
+#endif
+
 namespace py = pybind11;
 using namespace py::literals;
 
+#ifndef GD_NO_UNUSED_FUNCTIONS
 static py::object py_eval(const char *expr, const py::object &o = py::none());
+#endif
 static py::object py_call(py::object p_obj, String p_func_name, py::args p_args = py::args());
 static py::object py_call(String p_func_name, py::args p_args = py::args(), String p_module = "__main__");
 
-
-struct PyGodotInstance::InstancePrivateData {
+struct _attr_visibility_hidden PyGodotInstance::InstancePrivateData {
 	py::object py_app;
 };
 
@@ -85,6 +92,7 @@ bool PyGodotInstance::build_pygodot(int p_instance_id, const String &p_build_fun
 
 // Python utilities
 
+#ifndef GD_NO_UNUSED_FUNCTIONS
 static py::object py_eval(const char *expr, const py::object &o) {
 	py::object res = py::none();
 	try {
@@ -108,6 +116,7 @@ static py::object py_eval(const char *expr, const py::object &o) {
 	}
 	return res;
 }
+#endif // GD_NO_UNUSED_FUNCTIONS
 
 // Reference:
 // ----------

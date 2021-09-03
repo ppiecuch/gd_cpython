@@ -15,6 +15,7 @@
 #define ALIGNMENT               8
 #define ALIGNMENT_MASK          (ALIGNMENT - 1)
 #define ROUNDUP(x)              (((x) + ALIGNMENT_MASK) & ~ALIGNMENT_MASK)
+#define UNUSED(x)               (void)(x)
 
 typedef struct _block {
     /* Total number of bytes owned by this block available to pass out.
@@ -169,6 +170,8 @@ PyArena_Free(PyArena *arena)
         arena->total_block_size, arena->total_big_blocks,
         PyList_Size(arena->a_objects));
     */
+#else
+    UNUSED(r);
 #endif
     block_free(arena->a_head);
     /* This property normally holds, except when the code being compiled

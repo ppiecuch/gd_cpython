@@ -2,6 +2,8 @@
 
 #include "pgenheaders.h"
 
+#undef strdup
+
 char *
 strdup(const char *str)
 {

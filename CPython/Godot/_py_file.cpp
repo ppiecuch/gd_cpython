@@ -149,7 +149,7 @@ PYFILE *_gd_popen(const char *cmd, const char *mode) {
 
 int _gd_close(int fd) {
 	if (fd > 0) {
-		const Id_T t = { .value = uint32_t(fd) };
+		const Id_T t = { uint32_t(fd) };
 		if (_handles.is_valid(t)) {
 			PYFILE *f = _handles[t];
 			f->fa->close();
@@ -163,7 +163,7 @@ int _gd_close(int fd) {
 
 int _gd_lseek(int fd, off_t offset, int whence) {
 	if (fd > 0) {
-		const Id_T t = { .value = uint32_t(fd) };
+		const Id_T t = { uint32_t(fd) };
 		if (_handles.is_valid(t)) {
 			return _gd_fseek(_handles[t], offset, whence);
 		}
@@ -173,7 +173,7 @@ int _gd_lseek(int fd, off_t offset, int whence) {
 
 off_t _gd_ltell(int fd) {
 	if (fd > 0) {
-		const Id_T t = { .value = uint32_t(fd) };
+		const Id_T t = { uint32_t(fd) };
 		if (_handles.is_valid(t)) {
 			return _gd_ftell(_handles[t]);
 		}
@@ -183,7 +183,7 @@ off_t _gd_ltell(int fd) {
 
 ssize_t _gd_read(int fd, void* buf, size_t len) {
 	if (fd > 0) {
-		const Id_T t = { .value = uint32_t(fd) };
+		const Id_T t = { uint32_t(fd) };
 		if (_handles.is_valid(t)) {
 			return _gd_fread(buf, len, 1, _handles[t]);
 		}
@@ -193,7 +193,7 @@ ssize_t _gd_read(int fd, void* buf, size_t len) {
 
 ssize_t _gd_write(int fd, const void* buf, size_t len) {
 	if (fd > 0) {
-		const Id_T t = { .value = uint32_t(fd) };
+		const Id_T t = { uint32_t(fd) };
 		if (_handles.is_valid(t)) {
 			return _gd_fwrite(buf, len, 1, _handles[t]);
 		}
@@ -203,7 +203,7 @@ ssize_t _gd_write(int fd, const void* buf, size_t len) {
 
 ssize_t _gd_filesize(int fd) {
 	if (fd > 0) {
-		const Id_T t = { .value = uint32_t(fd) };
+		const Id_T t = { uint32_t(fd) };
 		if (_handles.is_valid(t)) {
 			return _gd_ffilesize(_handles[t]);
 		}
@@ -217,7 +217,7 @@ PYFILE *_gd_fopen(const char* name, const char *mode) {
 
 PYFILE *_gd_fdopen(const int fd, const char *mode) {
 	if (fd > 0) {
-		const Id_T t = { .value = uint32_t(fd) };
+		const Id_T t = { uint32_t(fd) };
 		if (_handles.is_valid(t)) {
 			return _handles[t];
 		}
@@ -265,21 +265,22 @@ int _gd_unlink(const char *path) {
 int _gd_fstat(PYFILE *f, struct stat *buf) {
 	if (f) {
 		String path = f->fa->get_path();
-		if (DirAccess::exists(path)) buf->st_mode = S_IFDIR;
-		else if (FileAccess::exists(path)) buf->st_mode = S_IFREG;
+		if (DirAccess::exists(path)) { if (buf) buf->st_mode = S_IFDIR; }
+		else if (FileAccess::exists(path)) { if (buf) buf->st_mode = S_IFREG; }
 		else return FAILURE;
-		buf->st_mtime = buf->st_mtime = FileAccess::get_modified_time(path);
+		if (_is_link(path)) { if (buf) buf->st_mode = S_IFLNK; }
+		if (buf) { buf->st_ctime = buf->st_mtime = FileAccess::get_modified_time(path); }
 		return SUCCESS;
 	}
 	return FAILURE;
 }
 
 int _gd_stat(const char *path, struct stat *buf) {
-	if (DirAccess::exists(path)) buf->st_mode = S_IFDIR;
-	else if (FileAccess::exists(path)) buf->st_mode = S_IFREG;
+	if (DirAccess::exists(path)) { if (buf) buf->st_mode = S_IFDIR; }
+	else if (FileAccess::exists(path)) { if (buf) buf->st_mode = S_IFREG; }
 	else return FAILURE;
-	if (_is_link(path)) buf->st_mode = S_IFLNK;
-	buf->st_mtime = buf->st_mtime = FileAccess::get_modified_time(path);
+	if (_is_link(path)) { if (buf) buf->st_mode = S_IFLNK; }
+	if (buf) {  buf->st_ctime = buf->st_mtime = FileAccess::get_modified_time(path); }
 	return SUCCESS;
 }
 
@@ -524,7 +525,7 @@ ssize_t _gd_ffilesize(PYFILE *f) {
 	if (f) {
 		return f->fa->get_len();
 	}
-	return SUCCESS;
+	return FAILURE;
 }
 
 PYFILE *_gd_stderr() {

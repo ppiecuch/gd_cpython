@@ -117,7 +117,8 @@ typedef struct {
     pthread_mutex_t  mut;
 } pthread_lock;
 
-#define CHECK_STATUS(name)  if (status != 0) { perror(name); error = 1; }
+#define UNUSED(x)           (void)(x)
+#define CHECK_STATUS(name)  if (status != 0) { perror(name); error = 1; UNUSED(error); }
 
 /*
  * Initialization.

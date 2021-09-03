@@ -131,7 +131,7 @@
 #endif
 
 /* Define if you have the 'ctermid_r' function. */
-#ifndef __ANDROID__
+#ifdef __APPLE__
 #define HAVE_CTERMID_R 1
 #endif
 
@@ -169,7 +169,9 @@
 #endif
 
 /* Define if we have /dev/ptc. */
-/* #undef HAVE_DEV_PTC */
+#ifndef __APPLE__
+#define HAVE_DEV_PTC
+#endif
 
 /* Define if we have /dev/ptmx. */
 #ifndef __ANDROID__
@@ -238,7 +240,7 @@
 #define HAVE_FORK 1
 
 /* Define to 1 if you have the `forkpty' function. */
-#ifndef __ANDROID__
+#ifdef __APPLE__
 #ifndef forkpty
 #define HAVE_FORKPTY 1
 #endif
@@ -399,7 +401,7 @@
 #define HAVE_KILLPG 1
 
 /* Define if you have the 'kqueue' functions. */
-#ifndef __ANDROID__
+#ifdef __APPLE__
 #define HAVE_KQUEUE 1
 #endif
 
@@ -519,7 +521,7 @@
 #define HAVE_NICE 1
 
 /* Define to 1 if you have the `openpty' function. */
-#ifndef __ANDROID__
+#ifdef __APPLE__
 #define HAVE_OPENPTY 1
 #endif
 
@@ -677,7 +679,7 @@
 #define HAVE_SNPRINTF 1
 
 /* Define if sockaddr has sa_len member */
-#ifndef __ANDROID__
+#ifdef __APPLE__
 #define HAVE_SOCKADDR_SA_LEN 1
 #endif
 
@@ -691,14 +693,18 @@
 #define HAVE_SPAWN_H 1
 
 /* Define if your compiler provides ssize_t */
-#define HAVE_SSIZE_T 1
-
-#ifdef __ANDROID__
-/* Define if you have struct stat.st_mtim.tv_nsec */
-#define HAVE_STAT_TV_NSEC
+#ifdef _WIN32
+#undef HAVE_SSIZE_T
 #else
+#define HAVE_SSIZE_T 1
+#endif
+
+#ifdef __APPLE__
 /* Define if you have struct stat.st_mtimensec */
 #define HAVE_STAT_TV_NSEC2 1
+#else
+/* Define if you have struct stat.st_mtim.tv_nsec */
+#define HAVE_STAT_TV_NSEC
 #endif
 
 /* Define if your compiler supports variable length function prototypes (e.g.
@@ -732,7 +738,7 @@
 /* #undef HAVE_STROPTS_H */
 
 /* Define to 1 if `st_birthtime' is a member of `struct stat'. */
-#ifndef __ANDROID__
+#ifdef __APPLE__
 #define HAVE_STRUCT_STAT_ST_BIRTHTIME 1
 #endif
 
@@ -743,12 +749,12 @@
 #define HAVE_STRUCT_STAT_ST_BLOCKS 1
 
 /* Define to 1 if `st_flags' is a member of `struct stat'. */
-#ifndef __ANDROID__
+#ifdef __APPLE__
 #define HAVE_STRUCT_STAT_ST_FLAGS 1
 #endif
 
 /* Define to 1 if `st_gen' is a member of `struct stat'. */
-#ifndef __ANDROID__
+#ifdef __APPLE__
 #define HAVE_STRUCT_STAT_ST_GEN 1
 #endif
 
@@ -785,7 +791,7 @@
 /* #undef HAVE_SYS_EPOLL_H */
 
 /* Define to 1 if you have the <sys/event.h> header file. */
-#ifndef __ANDROID__
+#ifdef __APPLE__
 #define HAVE_SYS_EVENT_H 1
 #endif
 
@@ -918,7 +924,7 @@
 /* #undef HAVE_USABLE_WCHAR_T */
 
 /* Define to 1 if you have the <util.h> header file. */
-#ifndef __ANDROID__
+#ifdef __APPLE__
 #define HAVE_UTIL_H 1
 #endif
 

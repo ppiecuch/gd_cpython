@@ -11,9 +11,11 @@
 #include <marshal.h>
 
 static bool py_has_error();
+#ifndef GD_NO_UNUSED_FUNCTIONS
 static String object_to_string(PyObject *p_val);
 static PyObject* import_module(const String& p_code_obj, const String& p_module_name);
 static PyObject *call_function(PyObject *p_module, String p_func_name, PyObject *p_args);
+#endif
 
 constexpr const char *__init_func = "gd_init";
 constexpr const char *__tick_func = "gd_tick";
@@ -276,6 +278,7 @@ static bool py_has_error() {
 	return error;
 }
 
+#ifndef GD_NO_UNUSED_FUNCTIONS
 static String object_to_string(PyObject *p_val) {
 	String val;
 	if(p_val != nullptr) {
@@ -317,3 +320,4 @@ static PyObject *call_function(PyObject *p_module, String p_func_name, PyObject 
 	Py_XDECREF(p_args); // Release reference to arguments
 	return ret;
 }
+#endif // GD_NO_UNUSED_FUNCTIONS

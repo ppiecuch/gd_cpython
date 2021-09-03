@@ -7,6 +7,8 @@
    All rights reserved.
 */
 
+#define UNUSED(x) (void)(x)
+
 /* The block length may be set to any number over 1.  Larger numbers
  * reduce the number of calls to the memory allocator but take more
  * memory.  Ideally, BLOCKLEN should be set with an eye to the
@@ -705,7 +707,9 @@ static PyObject *
 deque_clearmethod(dequeobject *deque)
 {
     int rv;
-
+#ifndef Py_DEBUG
+	UNUSED(rv);
+#endif
     rv = deque_clear(deque);
     assert (rv != -1);
     Py_RETURN_NONE;

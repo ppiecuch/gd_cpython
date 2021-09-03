@@ -11,7 +11,20 @@
 #include <cassert>
 #include <vector>
 #include <algorithm>
+#include <exception>
 #include <type_traits>
+
+#ifndef _NOEXCEPT
+# if __GNUC__ >= 4
+#  define _NOEXCEPT _GLIBCXX_USE_NOEXCEPT
+# endif // if __GNUC__ >= 4
+#endif  // ifndef _NOEXCEPT
+
+#if __GNUC__ && __GNUC__ < 5
+#define IS_TRIVIALLY_COPYABLE(T) __has_trivial_copy(T)
+#else
+#define IS_TRIVIALLY_COPYABLE(T) std::is_trivially_copyable<T>::value
+#endif
 
 /**
 * @struct Id_T
@@ -311,6 +324,7 @@ Id_T handle_map<T>::insert(const T& i)
 }
 
 
+# if __GNUC__ > 4
 template <typename T>
 template <typename... Params>
 IdSet_T handle_map<T>::emplace_items(int n, Params... args)
@@ -326,6 +340,7 @@ IdSet_T handle_map<T>::emplace_items(int n, Params... args)
 
 	return handles; // efficient to return vector by value, copy elided with NVRO (or with C++11 move semantics)
 }
+#endif
 
 
 template <typename T>
@@ -508,7 +523,7 @@ size_t handle_map<T>::defragment(Compare comp, size_t maxSwaps)
 		int j1 = j + 1;
 
 		// trivially copyable implementation
-		if (std::is_trivially_copyable<T>::value) {
+		if (IS_TRIVIALLY_COPYABLE(T)) {
 			while (j >= 0 && comp(m_items[j], tmp)) {
 				m_sparse_ids[m_meta[j].dense_to_sparse].index = j1;
 				--j;

@@ -80,6 +80,9 @@ From original ReadMe (https://github.com/albertz/python-embedded):
 9. https://github.com/pasimako/embedPython
 10. https://stackoverflow.com/questions/42521830/call-a-python-function-from-c-using-pybind11
 
+*Android:*
+1. https://bugs.python.org/issue23496
+
 *c++/Qt:*
 1. https://ubuverse.com/embedding-the-python-interpreter-in-a-qt-application/
 2. http://mateusz.loskot.net/post/2011/12/01/python-sys-stdout-redirection-in-cpp/
