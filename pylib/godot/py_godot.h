@@ -1,4 +1,5 @@
-#pragma once
+#ifndef PY_GODOT_H
+#define PY_GODOT_H
 
 #include "core/os/input.h"
 #include "core/math/vector2.h"
@@ -37,3 +38,5 @@ struct GdEvent {
 	GdEvent(int t) : type(t) { }
 	GdEvent(int t, Point2 p) : type(t), position(p) { }
 };
+
+#endif // PY_GODOT_H

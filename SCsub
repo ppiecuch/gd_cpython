@@ -6,7 +6,7 @@ Import("env")
 Import("env_modules")
 
 search_paths = ["#modules/gdextensions", ".", "pylib", "pylib/config", "pylib/include", "CPython/Include", "CPython/Godot"]
-defines = ["GD_PYTHON", "GD_NO_UNUSED_FUNCTIONS"]
+defines = ["GD_PYTHON"]
 
 env_module = env.Clone()
 env_module.Append(CPPPATH=search_paths)
@@ -176,11 +176,12 @@ sources = [
 	"CPython/Godot/_py_file.cpp",
 ]
 
-if env["platform"] == "osx" or env["platform"] == "iphone":
+if env["platform"] == "osx":
 	sources += ["CPython/Python/mactoolboxglue.c"]
 
 sources += [
-	"pylib/godot/py_godot.cpp"
+	"pylib/godot/py_godot.cpp",
+	"pylib/godot/py_binds.cpp",
 ]
 
 for filename in os.listdir("pylib/modules"):

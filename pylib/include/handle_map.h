@@ -54,8 +54,8 @@ struct Id_T {
 	};
 };
 typedef std::vector<Id_T> IdSet_T;
-#define NullId_T	Id_T{}
-
+#define NullId_T Id_T{}
+inline static Id_T make_handle(uint32_t v) { Id_T Id; Id.value = v; return Id; }
 
 /**
 * @class handle_map

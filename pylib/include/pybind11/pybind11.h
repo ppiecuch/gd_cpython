@@ -1369,15 +1369,15 @@ public:
     template <typename Func>
     class_& def_buffer(Func &&func) {
         struct capture { Func func; };
-        auto *ptr = new capture { std::forward<Func>(func) };
+        auto *cap = new capture { std::forward<Func>(func) };
         install_buffer_funcs([](PyObject *obj, void *ptr) -> buffer_info* {
             detail::make_caster<type> caster;
             if (!caster.load(obj, false))
                 return nullptr;
             return new buffer_info(((capture *) ptr)->func(caster));
-        }, ptr);
-        weakref(m_ptr, cpp_function([ptr](handle wr) {
-            delete ptr;
+        }, cap);
+        weakref(m_ptr, cpp_function([cap](handle wr) {
+            delete cap;
             wr.dec_ref();
         })).release();
         return *this;

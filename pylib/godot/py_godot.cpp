@@ -25,9 +25,6 @@
 namespace py = pybind11;
 using namespace py::literals;
 
-#ifndef GD_NO_UNUSED_FUNCTIONS
-static py::object py_eval(const char *expr, const py::object &o = py::none());
-#endif
 static py::object py_call(py::object p_obj, String p_func_name, py::args p_args = py::args());
 static py::object py_call(String p_func_name, py::args p_args = py::args(), String p_module = "__main__");
 
@@ -45,7 +42,7 @@ PyGodotInstance::~PyGodotInstance() {
 }
 
 bool PyGodotInstance::process_events(const Ref<InputEvent> &p_event, const String &p_event_func) {
-	if (not _p->py_app.is_none()) {
+	if (!_p->py_app.is_none()) {
 		if (const InputEventMouseMotion *m = Object::cast_to<InputEventMouseMotion>(*p_event)) {
 			GdEvent ev(GdEvent::MOUSEMOTION, m->get_position());
 			py_call(_p->py_app, p_event_func, py::make_tuple(ev));
@@ -56,9 +53,9 @@ bool PyGodotInstance::process_events(const Ref<InputEvent> &p_event, const Strin
 }
 
 Variant PyGodotInstance::call(const String &p_func, real_t p_arg) {
-	if (not _p->py_app.is_none()) {
+	if (!_p->py_app.is_none()) {
 		auto r = py_call(_p->py_app, p_func, py::make_tuple(p_arg));
-		if (not r.is_none()) {
+		if (!r.is_none()) {
 			if (r.is(py::bool_())) {
 				return r.cast<bool>();
 			}
@@ -71,9 +68,9 @@ Variant PyGodotInstance::call(const String &p_func, real_t p_arg) {
 }
 
 Variant PyGodotInstance::call(const String &p_func) {
-	if (not _p->py_app.is_none()) {
+	if (!_p->py_app.is_none()) {
 		auto r = py_call(_p->py_app, p_func);
-		if (not r.is_none()) {
+		if (!r.is_none()) {
 			if (r.is(py::bool_())) {
 				return r.cast<bool>();
 			}
@@ -87,12 +84,12 @@ Variant PyGodotInstance::call(const String &p_func) {
 
 bool PyGodotInstance::build_pygodot(int p_instance_id, const String &p_build_func) {
 	_p->py_app = py_call(p_build_func, py::make_tuple(p_instance_id));
-	return (not _p->py_app.is_none());
+	return (!_p->py_app.is_none());
 }
 
 // Python utilities
 
-#ifndef GD_NO_UNUSED_FUNCTIONS
+#if 0
 static py::object py_eval(const char *expr, const py::object &o) {
 	py::object res = py::none();
 	try {
@@ -103,7 +100,7 @@ static py::object py_eval(const char *expr, const py::object &o) {
 			res = py::eval(expr, py::globals());
 		}
 #ifdef DEBUG_ENABLED
-		if (not res.is_none()) {
+		if (!res.is_none()) {
 			py::print("Return value from expression:", res);
 		}
 #endif
@@ -116,7 +113,7 @@ static py::object py_eval(const char *expr, const py::object &o) {
 	}
 	return res;
 }
-#endif // GD_NO_UNUSED_FUNCTIONS
+#endif
 
 // Reference:
 // ----------
@@ -143,7 +140,7 @@ static py::object py_call(String p_func_name, py::args p_args, String p_module) 
 	auto m = py::module::import(module.c_str());
 	auto r = m.attr(function.c_str())(*p_args);
 #ifdef DEBUG_ENABLED
-	if (not r.is_none()) {
+	if (!r.is_none()) {
 		py::print("Return value: ", function, " -> ", r);
 	}
 #endif

@@ -124,7 +124,7 @@ get_filter(PyObject *category, PyObject *text, Py_ssize_t lineno,
 
     /* _filters could change while we are iterating over it. */
     for (i = 0; i < PyList_GET_SIZE(_filters); i++) {
-        PyObject *tmp_item, *action, *msg, *cat, *mod, *ln_obj;
+        PyObject *tmp_item, *act, *msg, *cat, *mod, *ln_obj;
         Py_ssize_t ln;
         int is_subclass, good_msg, good_mod;
 
@@ -136,7 +136,7 @@ get_filter(PyObject *category, PyObject *text, Py_ssize_t lineno,
         }
 
         /* Python code: action, msg, cat, mod, ln = item */
-        action = PyTuple_GET_ITEM(tmp_item, 0);
+        act = PyTuple_GET_ITEM(tmp_item, 0);
         msg = PyTuple_GET_ITEM(tmp_item, 1);
         cat = PyTuple_GET_ITEM(tmp_item, 2);
         mod = PyTuple_GET_ITEM(tmp_item, 3);
@@ -151,7 +151,7 @@ get_filter(PyObject *category, PyObject *text, Py_ssize_t lineno,
             return NULL;
 
         if (good_msg && is_subclass && good_mod && (ln == 0 || lineno == ln))
-            return PyString_AsString(action);
+            return PyString_AsString(act);
     }
 
     action = get_default_action();

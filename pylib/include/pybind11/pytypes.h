@@ -1265,9 +1265,9 @@ public:
 
     capsule(const void *value, void (*destructor)(void *)) {
         m_ptr = PyCapsule_New(const_cast<void *>(value), nullptr, [](PyObject *o) {
-            auto destructor = reinterpret_cast<void (*)(void *)>(PyCapsule_GetContext(o));
+            auto fn = reinterpret_cast<void (*)(void *)>(PyCapsule_GetContext(o));
             void *ptr = PyCapsule_GetPointer(o, nullptr);
-            destructor(ptr);
+            fn(ptr);
         });
 
         if (!m_ptr)
@@ -1279,8 +1279,8 @@ public:
 
     capsule(void (*destructor)()) {
         m_ptr = PyCapsule_New(reinterpret_cast<void *>(destructor), nullptr, [](PyObject *o) {
-            auto destructor = reinterpret_cast<void (*)()>(PyCapsule_GetPointer(o, nullptr));
-            destructor();
+            auto fn = reinterpret_cast<void (*)()>(PyCapsule_GetPointer(o, nullptr));
+            fn();
         });
 
         if (!m_ptr)

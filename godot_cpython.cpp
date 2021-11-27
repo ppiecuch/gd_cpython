@@ -10,12 +10,12 @@
 #include <Python.h>
 #include <marshal.h>
 
+
 static bool py_has_error();
-#ifndef GD_NO_UNUSED_FUNCTIONS
-static String object_to_string(PyObject *p_val);
-static PyObject* import_module(const String& p_code_obj, const String& p_module_name);
-static PyObject *call_function(PyObject *p_module, String p_func_name, PyObject *p_args);
-#endif
+
+String object_to_string(PyObject *p_val);
+PyObject* import_module(const String& p_code_obj, const String& p_module_name);
+PyObject *call_function(PyObject *p_module, String p_func_name, PyObject *p_args);
 
 constexpr const char *__init_func = "gd_init";
 constexpr const char *__tick_func = "gd_tick";
@@ -118,6 +118,10 @@ void CPythonInstance::_notification(int p_what) {
 		case NOTIFICATION_EXIT_TREE: {
 			set_process(false);
 			set_process_input(false);
+			if (_running) {
+				_py->call(__term_func);
+				_running = false;
+			}
 		} break;
 		case NOTIFICATION_DRAW: {
 			if (_running) {
@@ -278,8 +282,7 @@ static bool py_has_error() {
 	return error;
 }
 
-#ifndef GD_NO_UNUSED_FUNCTIONS
-static String object_to_string(PyObject *p_val) {
+String object_to_string(PyObject *p_val) {
 	String val;
 	if(p_val != nullptr) {
 		if(PyUnicode_Check(p_val)) {
@@ -293,7 +296,7 @@ static String object_to_string(PyObject *p_val) {
 	return val;
 }
 
-static PyObject* import_module(const String& p_code_obj, const String& p_module_name) {
+PyObject* import_module(const String& p_code_obj, const String& p_module_name) {
 	PyObject *po_module = nullptr;
 	PyObject *main_module = PyImport_AddModule("__main__"); // Get reference to main module
 	PyObject *code_obj = PyMarshal_ReadObjectFromString(p_code_obj.utf8().ptr(), p_code_obj.size()); // De-serialize Python code object
@@ -307,7 +310,7 @@ static PyObject* import_module(const String& p_code_obj, const String& p_module_
 	return po_module;
 }
 
-static PyObject *call_function(PyObject *p_module, String p_func_name, PyObject *p_args) {
+PyObject *call_function(PyObject *p_module, String p_func_name, PyObject *p_args) {
 	PyObject *ret = nullptr;
 	PyObject *func = PyObject_GetAttrString(p_module, p_func_name.utf8().get_data()); // Get reference to function p_func_name in module p_module
 	if(!py_has_error()) {
@@ -320,4 +323,3 @@ static PyObject *call_function(PyObject *p_module, String p_func_name, PyObject 
 	Py_XDECREF(p_args); // Release reference to arguments
 	return ret;
 }
-#endif // GD_NO_UNUSED_FUNCTIONS

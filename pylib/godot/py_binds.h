@@ -1,4 +1,5 @@
-#pragma once
+#ifndef PY_BINDS_H
+#define PY_BINDS_H
 
 #include "py_godot.h"
 
@@ -582,24 +583,6 @@ struct GdSound {
 	void play(bool loop) { }
 };
 
-// Wrapper around Godot events
-struct GdEvent {
-	enum {
-		QUIT,
-		KEYDOWN,
-		KEYUP,
-		MOUSEMOTION,
-		MOUSEBUTTONDOWN,
-		MOUSEBUTTONUP,
-		JOYBUTTONDOWN,
-		JOYBUTTONUP,
-	};
-	int type;
-	Point2 position;
-	GdEvent(int t) : type(t) { }
-	GdEvent(int t, Point2 p) : type(t), position(p) { }
-};
-
 namespace utils {
 	void print_dict(py::dict dict) {
 		for (auto item : dict)
@@ -658,7 +641,7 @@ namespace display {
 //
 
 PYBIND11_EMBEDDED_MODULE(gdgame, m) {
-    m.doc() = "Godot bindings";
+	m.doc() = "Godot bindings";
 	// gdgame
 	m.def("init", []() { });
 	m.def("quit", []() { });
@@ -720,7 +703,7 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 	m_math.def("randd", &Math::randd);
 	m_math.def("randf", &Math::randf);
 	m_math.def("random", static_cast<real_t (*)(real_t, real_t)>(&Math::random));
-	m_math.def("random", static_cast<real_t (*)(int, int)>(&Math::random));
+	m_math.def("random", static_cast<int (*)(int, int)>(&Math::random));
 	m_math.def("is_equal_approx_ratio", static_cast<bool (*)(real_t, real_t, real_t, real_t)>(&Math::is_equal_approx_ratio));
 	m_math.def("is_equal_approx", static_cast<bool (*)(real_t, real_t)>(&Math::is_equal_approx));
 	m_math.def("is_equal_approx", static_cast<bool (*)(real_t, real_t, real_t)>(&Math::is_equal_approx));
@@ -1049,3 +1032,5 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 	m_font.def("init", []() { });
 	m_font.def("quit", []() { });
 }
+
+#endif // PY_BINDS_H

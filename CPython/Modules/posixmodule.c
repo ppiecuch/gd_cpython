@@ -25,6 +25,8 @@
 #   pragma weak fstatvfs
 #endif
 
+#include <TargetConditionals.h>
+
 #endif /* __APPLE__ */
 
 #define PY_SSIZE_T_CLEAN
@@ -154,7 +156,9 @@ corresponding Unix manual entries for more information on calls.");
 #ifndef __rtems__
 #define HAVE_POPEN      1
 #endif
+#if !TARGET_OS_IPHONE
 #define HAVE_SYSTEM     1
+#endif
 #define HAVE_WAIT       1
 #define HAVE_TTYNAME    1
 #endif  /* PYOS_OS2 && PYCC_GCC && __VMS */

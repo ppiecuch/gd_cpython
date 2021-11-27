@@ -973,7 +973,9 @@
 
 /* Define to 1 if `major', `minor', and `makedev' are declared in
  <sysmacros.h>. */
-/* #undef MAJOR_IN_SYSMACROS */
+#ifdef __linux__
+#define MAJOR_IN_SYSMACROS
+#endif
 
 /* Define if mvwdelch in curses.h is an expression. */
 #define MVWDELCH_IS_EXPRESSION 1
