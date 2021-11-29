@@ -55,7 +55,12 @@ PyGodotInstance::~PyGodotInstance() {
 bool PyGodotInstance::process_events(const Ref<InputEvent> &p_event, const String &p_event_func) {
 	if (!_p->py_app.is_none()) {
 		if (const InputEventMouseMotion *m = Object::cast_to<InputEventMouseMotion>(*p_event)) {
-			GdEvent ev(GdEvent::MOUSEMOTION, m->get_position());
+			GdEvent ev{GdEvent::MOUSEMOTION, m->get_position()};
+			py_call(_p->py_app, p_event_func, py::make_tuple(ev));
+			return true;
+		}
+		if (const InputEventMouseButton *mb = Object::cast_to<InputEventMouseButton>(*p_event)) {
+			GdEvent ev{mb->is_pressed() ? GdEvent::MOUSEBUTTONDOWN : GdEvent::MOUSEBUTTONUP, mb->get_position(), mb->get_button_index()};
 			py_call(_p->py_app, p_event_func, py::make_tuple(ev));
 			return true;
 		}
@@ -176,6 +181,36 @@ static Ref<BitmapFont> _get_default_bitmap_font() {
 }
 #endif // MODULE_FREETYPE_ENABLED
 
+static Ref<BitmapFont> make_font_from_grid(int p_height, int p_ascent, int p_charcount, const int *p_char_rects, int p_w, int p_h, const unsigned char *p_img) {
+	Ref<BitmapFont> font(memnew(BitmapFont));
+
+	Ref<Image> image = memnew(Image(p_img));
+	Ref<ImageTexture> tex = memnew(ImageTexture);
+	tex->create_from_image(image);
+
+	font->add_texture(tex);
+
+	for (int i = 0; i < p_charcount; i++) {
+		const int *c = &p_char_rects[i * 8];
+
+		int chr = c[0];
+		Rect2 frect;
+		frect.position.x = c[1];
+		frect.position.y = c[2];
+		frect.size.x = c[3];
+		frect.size.y = c[4];
+		Point2 align(c[6], c[5]);
+		int advance = c[7];
+
+		font->add_char(chr, 0, frect, align, advance);
+	}
+
+	font->set_height(p_height);
+	font->set_ascent(p_ascent);
+
+	return font;
+}
+
 static Ref<BitmapFont> make_font_from_hstrip(const String &p_font_path, const String &p_characters) {
 	Ref<BitmapFont> font(memnew(BitmapFont));
 
@@ -226,7 +261,7 @@ void GdFont::load(const std::string &path, int size, int stretch) {
 		font = _get_default_dynamic_font(size, stretch);
 #else
 		font = _get_default_bitmap_font();
-#endif
+#endif // MODULE_FREETYPE_ENABLED
 	} else {
 		// create font depending of the extension
 		const String ext = String(path.c_str()).get_extension();
@@ -241,9 +276,9 @@ void GdFont::load(const std::string &path, int size, int stretch) {
 			}
 #else
 			WARN_PRINT("TrueType font not available.");
-#endif
+#endif // MODULE_FREETYPE_ENABLED
 		} else if (ext == "fnt") {
-				Ref<BitmapFont> _font = memnew(BitmapFont);
+			Ref<BitmapFont> _font = ResourceLoader::load(String(path.c_str()), "BitmapFont");
 		} else if (ext == "font") {
 			FileAccessRef fnt(FileAccess::open(path.c_str(), FileAccess::READ));
 			if (fnt) {
@@ -256,38 +291,6 @@ void GdFont::load(const std::string &path, int size, int stretch) {
 		}
 	}
 }
-
-#if 0
-static Ref<BitmapFont> make_font(int p_height, int p_ascent, int p_charcount, const int *p_char_rects, int p_w, int p_h, const unsigned char *p_img) {
-	Ref<BitmapFont> font(memnew(BitmapFont));
-
-	Ref<Image> image = memnew(Image(p_img));
-	Ref<ImageTexture> tex = memnew(ImageTexture);
-	tex->create_from_image(image);
-
-	font->add_texture(tex);
-
-	for (int i = 0; i < p_charcount; i++) {
-		const int *c = &p_char_rects[i * 8];
-
-		int chr = c[0];
-		Rect2 frect;
-		frect.position.x = c[1];
-		frect.position.y = c[2];
-		frect.size.x = c[3];
-		frect.size.y = c[4];
-		Point2 align(c[6], c[5]);
-		int advance = c[7];
-
-		font->add_char(chr, 0, frect, align, advance);
-	}
-
-	font->set_height(p_height);
-	font->set_ascent(p_ascent);
-
-	return font;
-}
-#endif
 
 // END
 
@@ -321,6 +324,7 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 	// gdgame.utils
 	py::module m_utils = m.def_submodule("utils", "gdgame module with different utilities.");
 	m_utils.def("get_text", &utils::get_text);
+	m_utils.def("unget_text", &utils::unget_text);
 	m_utils.def("print_dict", &utils::print_dict);
 	// gdgame.math
 	py::module m_math = m.def_submodule("math", "gdgame module with math definitions.");
@@ -412,6 +416,7 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def_readwrite("y", &Vector2::y)
 		.def_readwrite("width", &Vector2::x)
 		.def_readwrite("height", &Vector2::y)
+		.def("length", &Vector2::length)
 		.def(py::self + py::self)
 		.def(py::self += py::self)
 		.def(py::self *= real_t())
@@ -422,12 +427,14 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def("get_tuple", [](const Vector2 &v) { return std::make_tuple (v.x,v.y); })
 		.def("__copy__", [](const Vector2 &v){ return Vector2(v); })
 		.def("__repr__", [](const Vector2 &v) { return std::str(v); })
+		.def("__getitem__", [](const Vector2 &v, int index) { return v[index]; })
 		.attr("__version__") = VERSION_FULL_CONFIG;
 	py::class_<Vector3>(m_core, "Vector3")
 		.def(py::init<real_t, real_t, real_t>())
 		.def_readwrite("x", &Vector3::x)
 		.def_readwrite("y", &Vector3::y)
 		.def_readwrite("z", &Vector3::z)
+		.def("length", &Vector3::length)
 		.def(py::self + py::self)
 		.def(py::self += py::self)
 		.def(py::self *= real_t())
@@ -438,6 +445,7 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def("get_tuple", [](const Vector3 &v) { return std::make_tuple (v.x,v.y, v.z);})
 		.def("__copy__", [](const Vector3 &v){ return Vector3(v); })
 		.def("__repr__", [](const Vector3 &v) { return std::str(v);})
+		.def("__getitem__", [](const Vector3 &v, int index) { return v[index]; })
 		.attr("__version__") = VERSION_FULL_CONFIG;
 	py::class_<Rect2>(m_core, "Rect2")
 		.def(py::init<real_t, real_t, real_t, real_t>())
@@ -634,11 +642,11 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 	// gdgame.event
 	py::module m_event = m.def_submodule("event", "gdgame module for interacting with events and queues.");
 	py::class_<GdEvent>(m_event, "Event")
-		.def(py::init<int>())
-		.def(py::init<int, const Point2 &>())
 		.def_readonly("type", &GdEvent::type)
+		.def_readonly("button", &GdEvent::button)
 		.def_readonly("pos", &GdEvent::position)
 		.def("get_pos", [](const GdEvent &e) { return e.position; })
+		.def("update", []() { })
 		.attr("__version__") = VERSION_FULL_CONFIG;
 	m_event.def("set_grab", &event::set_grab);
 	// gdgame.mouse
@@ -699,6 +707,8 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 	py::class_<GdFont>(m_font, "Font")
 		.def(py::init<const std::string&, int>())
 		.def(py::init<const std::string&, int, int>())
+		.def("get_height", &GdFont::get_height)
+		.def("size", &GdFont::size)
 		.def("render", &GdFont::render)
 		.attr("__version__") = VERSION_FULL_CONFIG;
 	m_font.def("init", []() { });

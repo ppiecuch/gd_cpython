@@ -59,7 +59,7 @@ namespace std {
 	template<typename FromType> std::string str(const FromType& e) { return std::string(String(e).utf8().get_data()); }
 }
 
-static Color vec_to_color(const std::vector<float> &vec) {
+static _FORCE_INLINE_ Color vec_to_color(const std::vector<float> &vec) {
 	switch(vec.size()) {
 		case 3: return Color(vec[0], vec[1], vec[2]);
 		case 4: return Color(vec[0], vec[1], vec[2], vec[3]);
@@ -169,7 +169,7 @@ struct GdDisplaySurface : public GdSurfaceImpl {
 	GdDisplaySurface(Object *instance) : instance(instance) { }
 	GdDisplaySurface(int instance_id) : instance(ObjectDB::get_instance(instance_id)) { }
 
-	void blit_texture(const Ref<Texture> &source, const Point2 &dest) {
+	_FORCE_INLINE_ void blit_texture(const Ref<Texture> &source, const Point2 &dest) {
 		ERR_FAIL_NULL(instance);
 		if (source.is_valid()) {
 			if (CanvasItem *canvas = Object::cast_to<CanvasItem>(instance)) {
@@ -180,7 +180,7 @@ struct GdDisplaySurface : public GdSurfaceImpl {
 		}
 	}
 
-	void blit_texture(const Ref<Texture> &source, const Rect2 &area) {
+	_FORCE_INLINE_ void blit_texture(const Ref<Texture> &source, const Rect2 &area) {
 		ERR_FAIL_NULL(instance);
 		if (source.is_valid()) {
 			if (CanvasItem *canvas = Object::cast_to<CanvasItem>(instance)) {
@@ -191,11 +191,11 @@ struct GdDisplaySurface : public GdSurfaceImpl {
 		}
 	}
 
-	void blit_texture(const Ref<Texture> &source, const Point2 &dest, const Rect2 &area) {
+	_FORCE_INLINE_ void blit_texture(const Ref<Texture> &source, const Point2 &dest, const Rect2 &area) {
 		return blit_texture(source, Rect2(dest, area.size), area);
 	}
 
-	void blit_texture(const Ref<Texture> &source, const Rect2 &dest, const Rect2 &area) {
+	_FORCE_INLINE_ void blit_texture(const Ref<Texture> &source, const Rect2 &dest, const Rect2 &area) {
 		ERR_FAIL_NULL(instance);
 		if (source.is_valid()) {
 			if (CanvasItem *canvas = Object::cast_to<CanvasItem>(instance)) {
@@ -206,7 +206,7 @@ struct GdDisplaySurface : public GdSurfaceImpl {
 		}
 	}
 
-	void render_text(const Ref<Font> &font, const String &text, const Point2 &dest, const Color &color = Color(1, 1, 1, 1)) {
+	_FORCE_INLINE_ void render_text(const Ref<Font> &font, const String &text, const Point2 &dest, const Color &color = Color(1, 1, 1, 1)) {
 		ERR_FAIL_NULL(instance);
 		if (font.is_valid()) {
 			if (CanvasItem *canvas = Object::cast_to<CanvasItem>(instance)) {
@@ -217,7 +217,7 @@ struct GdDisplaySurface : public GdSurfaceImpl {
 		}
 	}
 
-	void render_rect(const Rect2 &dest, const Color &color = Color(1, 1, 1, 1)) {
+	_FORCE_INLINE_ void render_rect(const Rect2 &dest, const Color &color = Color(1, 1, 1, 1)) {
 		ERR_FAIL_NULL(instance);
 		if (CanvasItem *canvas = Object::cast_to<CanvasItem>(instance)) {
 			canvas->draw_rect(dest, color);
@@ -226,7 +226,7 @@ struct GdDisplaySurface : public GdSurfaceImpl {
 		}
 	}
 
-	void render_queue(const std::vector<RenderLaterCmd> &queue) {
+	_FORCE_INLINE_ void render_queue(const std::vector<RenderLaterCmd> &queue) {
 		for (const auto &c : queue) {
 			switch(c.cmd) {
 				case RenderLaterCmd::BLIT_AT_POINT: blit_texture(c.texture, c.pt_dest); break;
@@ -256,11 +256,12 @@ struct GdSurface {
 	GdSurface(const String &filename) : impl(std::make_unique<GdTextureSurface>(filename)) { }
 	GdSurface(int &instance_id) : impl(std::make_unique<GdDisplaySurface>(instance_id)) { }
 
-	int get_width() const { ERR_FAIL_NULL_V(impl, 1); return impl->get_width(); }
-	int get_height() const { ERR_FAIL_NULL_V(impl, 1); return impl->get_height(); }
+	_FORCE_INLINE_ int get_width() const { ERR_FAIL_NULL_V(impl, 1); return impl->get_width(); }
+	_FORCE_INLINE_ int get_height() const { ERR_FAIL_NULL_V(impl, 1); return impl->get_height(); }
 
 	void fill(const std::vector<float> &color) { }
-	void blit(const GdSurface &source, const std::vector<real_t> &dest) {
+
+	_FORCE_INLINE_ void blit(const GdSurface &source, const std::vector<real_t> &dest) {
 		ERR_FAIL_NULL(impl);
 		ERR_FAIL_NULL(source.impl);
 		ERR_FAIL_COND(dest.size() != 2 and dest.size() != 4);
@@ -320,7 +321,7 @@ struct GdSurface {
 		}
 	}
 
-	void blit_or_area(const GdSurface &source, const std::vector<real_t> &dest, const std::vector<real_t> &area) {
+	_FORCE_INLINE_ void blit_or_area(const GdSurface &source, const std::vector<real_t> &dest, const std::vector<real_t> &area) {
 		ERR_FAIL_COND(area.size() != 0 and area.size() != 4);
 		switch (area.size()) {
 			case 0: blit(source, dest); return;
@@ -328,7 +329,7 @@ struct GdSurface {
 		}
 	}
 
-	void blit_area(const GdSurface &source, const std::vector<real_t> &dest, const Rect2 &area) {
+	_FORCE_INLINE_ void blit_area(const GdSurface &source, const std::vector<real_t> &dest, const Rect2 &area) {
 		ERR_FAIL_NULL(impl);
 		ERR_FAIL_NULL(source.impl);
 		ERR_FAIL_COND(dest.size() != 2 and dest.size() != 4);
@@ -404,6 +405,9 @@ struct GdFont {
 	_FORCE_INLINE_ GdSurface render(const std::string &text, bool alias, const std::vector<float> &color) {
 		return GdSurface(font, String(text.c_str()), vec_to_color(color));
 	}
+
+	_FORCE_INLINE_ Size2 size(const std::string &text) const { return font->get_string_size(String(text.c_str())); }
+	_FORCE_INLINE_ int get_height() const { return font->get_height(); }
 };
 
 // Wrapper around Godot events
@@ -420,8 +424,7 @@ struct GdEvent {
 	};
 	int type;
 	Point2 position;
-	GdEvent(int t) : type(t) { }
-	GdEvent(int t, Point2 p) : type(t), position(p) { }
+	int button;
 };
 
 // Wrapper around Godot sound
@@ -441,6 +444,10 @@ namespace utils {
 
 	py::str get_text(const py::str &s) {
 		return s;
+	}
+
+	py::str unget_text(const py::str &s1, const py::str &s2, int n) {
+		return n == 1 ? s1 : s2;
 	}
 } // utils
 
