@@ -137,7 +137,6 @@ void CPythonInstance::_notification(int p_what) {
 			if (_running && !_pausing) {
 				const real_t delta = get_process_delta_time();
 				if (_py->call(__tick_func, delta)) { // call tick function
-					print_line("upd");
 					update();
 				}
 			}
