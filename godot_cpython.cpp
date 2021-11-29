@@ -43,10 +43,6 @@ CPythonRun::CPythonRun(Node2D *p_owner) {
 
 	print_line(vformat("Python interpreter version: %s on %s", Py_GetVersion(), Py_GetPlatform()));
 	print_line(vformat("Python standard library path: %s", Py_GetPath()));
-
-#ifdef DEBUG_ENABLED
-	_PyObject_Dump( PyThreadState_Get()->interp->modules );
-#endif
 }
 
 CPythonRun::~CPythonRun() {
@@ -74,8 +70,7 @@ void CPythonRun::run_file(const String& p_python_file) {
 			PyErr_Clear();
 			pyfclose(fp);
 		} else {
-			int save_errno;
-			save_errno = errno;
+			int save_errno = errno;
 			PySys_WriteStderr("Could not open file\n");
 			errno = save_errno;
 			PyErr_SetFromErrnoWithFilename(PyExc_IOError, file.c_str());
@@ -129,32 +124,20 @@ void CPythonInstance::_notification(int p_what) {
 			}
 		} break;
 		case NOTIFICATION_READY: {
-			if (not _cpython) {
-				_cpython = std::make_gd_unique_ptr<CPythonRun>(memnew(CPythonRun(this)));
+			if (!_cpython) {
+				_cpython = std::make_gd_unique_ptr(memnew(CPythonRun(this)));
 			}
-			if (python_autorun) {
-				if (!python_file.empty() && _last_file_run != python_file) {
-					_cpython->run_file(python_file);
-					_last_file_run = python_file;
-					_running = !py_has_error();
-				}
-				if (!python_code.empty() && _last_code_run != python_code.md5_text()) {
-					_cpython->run_code(python_code);
-					_last_code_run = python_code.md5_text();
-					_running = !py_has_error();
-				}
-				if (_running) {
-					if (!python_gd_build_func.empty()) {
-						_py->build_pygodot(get_instance_id(), python_gd_build_func);
-					}
-					_py->call(__init_func); // call init functions
+			if (!Engine::get_singleton()->is_editor_hint()) {
+				if (python_autorun) {
+					run();
 				}
 			}
 		} break;
 		case NOTIFICATION_PROCESS: {
-			if (_running) {
+			if (_running && !_pausing) {
 				const real_t delta = get_process_delta_time();
 				if (_py->call(__tick_func, delta)) { // call tick function
+					print_line("upd");
 					update();
 				}
 			}
@@ -225,6 +208,31 @@ int CPythonInstance::get_verbose_level() const {
 	return Py_VerboseFlag;
 }
 
+bool CPythonInstance::run() {
+	if (!python_file.empty() && _last_file_run != python_file) {
+		_cpython->run_file(python_file);
+		_last_file_run = python_file;
+		_running = !py_has_error();
+	}
+	if (!python_code.empty() && _last_code_run != python_code.md5_text()) {
+		_cpython->run_code(python_code);
+		_last_code_run = python_code.md5_text();
+		_running = !py_has_error();
+	}
+	if (_running) {
+		if (!python_gd_build_func.empty()) {
+			_py->build_pygodot(get_instance_id(), python_gd_build_func);
+		}
+		auto r = _py->call(__init_func); // call init functions
+		#ifdef DEBUG_ENABLED
+		if (!r.is_nil()) {
+			print_verbose(vformat("Return value from %s: %s", __init_func, r));
+		}
+		#endif
+	}
+	return _running;
+}
+
 void CPythonInstance::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_python_code", "code"), &CPythonInstance::set_python_code);
 	ClassDB::bind_method(D_METHOD("get_python_code"), &CPythonInstance::get_python_code);
@@ -239,6 +247,7 @@ void CPythonInstance::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_verbose_level"), &CPythonInstance::set_verbose_level);
 	ClassDB::bind_method(D_METHOD("get_verbose_level"), &CPythonInstance::get_verbose_level);
 
+	ClassDB::bind_method(D_METHOD("run"), &CPythonInstance::run);
 	ClassDB::bind_method(D_METHOD("_input"), &CPythonInstance::_input);
 
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "autorun"), "set_autorun", "is_autorun");
@@ -252,7 +261,7 @@ void CPythonInstance::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("python_code_changed"));
 }
 
-CPythonInstance::CPythonInstance() : _py(std::make_gd_unique_ptr<PyGodotInstance>(memnew(PyGodotInstance))) {
+CPythonInstance::CPythonInstance() : _py(std::make_gd_unique_ptr(memnew(PyGodotInstance))) {
 	_running = false;
 	_pausing = false;
 	_dirty = false;

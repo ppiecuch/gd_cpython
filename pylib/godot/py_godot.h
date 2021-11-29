@@ -21,22 +21,4 @@ struct PyGodotInstance {
 	~PyGodotInstance();
 };
 
-// Wrapper around Godot events
-struct GdEvent {
-	enum {
-		QUIT,
-		KEYDOWN,
-		KEYUP,
-		MOUSEMOTION,
-		MOUSEBUTTONDOWN,
-		MOUSEBUTTONUP,
-		JOYBUTTONDOWN,
-		JOYBUTTONUP,
-	};
-	int type;
-	Point2 position;
-	GdEvent(int t) : type(t) { }
-	GdEvent(int t, Point2 p) : type(t), position(p) { }
-};
-
 #endif // PY_GODOT_H

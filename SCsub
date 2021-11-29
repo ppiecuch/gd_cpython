@@ -180,8 +180,7 @@ if env["platform"] == "osx":
 	sources += ["CPython/Python/mactoolboxglue.c"]
 
 sources += [
-	"pylib/godot/py_godot.cpp",
-	"pylib/godot/py_binds.cpp",
+	"pylib/godot/py_godot.cpp"
 ]
 
 for filename in os.listdir("pylib/modules"):

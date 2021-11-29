@@ -33,8 +33,8 @@ class CPythonInstance : public Node2D {
 	int debug_level;
 	int verboe_level;
 
-	std::deleted_unique_ptr<PyGodotInstance> _py;
-	std::deleted_unique_ptr<CPythonRun> _cpython;
+	std::gd_unique_ptr<PyGodotInstance> _py;
+	std::gd_unique_ptr<CPythonRun> _cpython;
 	bool _running, _pausing;
 	String _last_file_run;
 	String _last_code_run;
@@ -58,6 +58,8 @@ public:
 	int get_debug_level() const;
 	void set_verbose_level(const int level);
 	int get_verbose_level() const;
+
+	bool run();
 
 	CPythonInstance();
 };
