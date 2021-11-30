@@ -913,7 +913,9 @@
 #define HAVE_UNAME 1
 
 /* Define to 1 if you have the <unistd.h> header file. */
+#ifndef _WIN32
 #define HAVE_UNISTD_H 1
+#endif
 
 /* Define to 1 if you have the `unsetenv' function. */
 #define HAVE_UNSETENV 1
