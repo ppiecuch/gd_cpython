@@ -842,7 +842,9 @@
 #define HAVE_SYS_TIMES_H 1
 
 /* Define to 1 if you have the <sys/time.h> header file. */
+#ifndef _WIN32
 #define HAVE_SYS_TIME_H 1
+#endif
 
 /* Define to 1 if you have the <sys/types.h> header file. */
 #define HAVE_SYS_TYPES_H 1
