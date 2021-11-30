@@ -6,7 +6,7 @@ Import("env")
 Import("env_modules")
 
 search_paths = ["#modules/gdextensions", ".", "pylib", "pylib/config", "pylib/include", "CPython/Include", "CPython/Godot"]
-defines = ["GD_PYTHON"]
+defines = ["GD_PYTHON", " _CRT_SECURE_NO_WARNINGS"]
 
 env_module = env.Clone()
 env_module.Append(CPPPATH=search_paths)
