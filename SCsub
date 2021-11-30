@@ -183,12 +183,13 @@ sources += [
 	"pylib/godot/py_godot.cpp"
 ]
 
-for filename in os.listdir("pylib/modules"):
-	if filename.endswith(".c") or filename.endswith(".cpp"):
-		base=os.path.splitext(filename)[0]
-		env_module.Append(CPPDEFINES=[base.upper()])
-		print("(CPython) Enabling %s with macro %s" % (filename, base.upper()))
-		sources += ["pylib/modules/%s" % filename]
+if os.path.exists("pylib/modules"):
+	for filename in os.listdir("pylib/modules"):
+		if filename.endswith(".c") or filename.endswith(".cpp"):
+			base=os.path.splitext(filename)[0]
+			env_module.Append(CPPDEFINES=[base.upper()])
+			print("(CPython) Enabling %s with macro %s" % (filename, base.upper()))
+			sources += ["pylib/modules/%s" % filename]
 
 # build compressed library
 env_module.Zip("pylib.zip", "CPython/Lib", ZIPROOT="modules/gd_cpython/CPython/Lib")
