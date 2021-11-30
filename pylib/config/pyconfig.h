@@ -1128,7 +1128,9 @@
 #define TANH_PRESERVES_ZERO_SIGN 1
 
 /* Define to 1 if you can safely include both <sys/time.h> and <time.h>. */
+#ifndef _WIN32
 #define TIME_WITH_SYS_TIME 1
+#endif
 
 /* Define to 1 if your <sys/time.h> declares `struct tm'. */
 /* #undef TM_IN_SYS_TIME */
