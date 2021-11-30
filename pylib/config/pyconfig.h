@@ -824,7 +824,9 @@
 #define HAVE_SYS_RESOURCE_H 1
 
 /* Define to 1 if you have the <sys/select.h> header file. */
+#ifndef _WIN32
 #define HAVE_SYS_SELECT_H 1
+#endif
 
 /* Define to 1 if you have the <sys/socket.h> header file. */
 #define HAVE_SYS_SOCKET_H 1
