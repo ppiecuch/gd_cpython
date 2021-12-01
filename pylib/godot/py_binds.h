@@ -61,6 +61,7 @@ namespace std {
 
 static _FORCE_INLINE_ Color vec_to_color(const std::vector<float> &vec) {
 	switch(vec.size()) {
+		case 1: return Color::solid(vec[0]);
 		case 3: return Color(vec[0], vec[1], vec[2]);
 		case 4: return Color(vec[0], vec[1], vec[2], vec[3]);
 	}
@@ -245,19 +246,22 @@ struct GdSurface {
 	std::unique_ptr<GdSurfaceImpl> impl;
 	std::vector<RenderLaterCmd> _render_later;
 
-	GdDisplaySurface *get_as_display() const { return (GdDisplaySurface*)impl.get(); }
-	GdColorSurface *get_as_color() const { return (GdColorSurface*)impl.get(); }
-	GdTextureSurface *get_as_texture() const { return (GdTextureSurface*)impl.get(); }
-	GdTextSurface *get_as_text() const { return (GdTextSurface*)impl.get(); }
+	_FORCE_INLINE_ GdSurfaceImpl::Type get_surface_type() const { return impl->get_surface_type(); }
+	_FORCE_INLINE_ GdDisplaySurface *get_as_display() const { return (GdDisplaySurface*)impl.get(); }
+	_FORCE_INLINE_ GdColorSurface *get_as_color() const { return (GdColorSurface*)impl.get(); }
+	_FORCE_INLINE_ GdTextureSurface *get_as_texture() const { return (GdTextureSurface*)impl.get(); }
+	_FORCE_INLINE_ GdTextSurface *get_as_text() const { return (GdTextSurface*)impl.get(); }
 
 	GdSurface(const GdSurface &surf) :  impl(surf.impl->clone()) { }
 	GdSurface(int surf_width, int surf_height) : impl(std::make_unique<GdColorSurface>(surf_width, surf_height)) { }
+	GdSurface(const std::vector<real_t> surf_size) : impl(std::make_unique<GdColorSurface>(surf_size[0], surf_size[1])) { }
 	GdSurface(const Ref<Font> &font, const String &text, const Color &color) : impl(std::make_unique<GdTextSurface>(font, text, color)) { }
 	GdSurface(const String &filename) : impl(std::make_unique<GdTextureSurface>(filename)) { }
 	GdSurface(int &instance_id) : impl(std::make_unique<GdDisplaySurface>(instance_id)) { }
 
 	_FORCE_INLINE_ int get_width() const { ERR_FAIL_NULL_V(impl, 1); return impl->get_width(); }
 	_FORCE_INLINE_ int get_height() const { ERR_FAIL_NULL_V(impl, 1); return impl->get_height(); }
+	_FORCE_INLINE_ Size2 get_size() const { return Size2(get_width(), get_height()); }
 
 	void fill(const std::vector<float> &color) { }
 
@@ -402,6 +406,10 @@ struct GdFont {
 
 	void load(const std::string &path, int size, int stretch);
 
+	_FORCE_INLINE_ GdSurface render(const std::string &text, bool alias, int color) {
+		return GdSurface(font, String(text.c_str()), Color::hex(color));
+	}
+
 	_FORCE_INLINE_ GdSurface render(const std::string &text, bool alias, const std::vector<float> &color) {
 		return GdSurface(font, String(text.c_str()), vec_to_color(color));
 	}
@@ -432,6 +440,8 @@ struct GdSound {
 	GdSound(const std::string &filename) { }
 	void set_volume(real_t vol) { }
 	void play(bool loop) { }
+	void fadeout(int fadetime) { }
+	void stop() { }
 };
 
 namespace utils {
@@ -461,6 +471,26 @@ namespace image {
 		return GdSurface(String(filename.c_str()));
 	}
 } // image
+
+namespace draw {
+	_FORCE_INLINE_ void rect(const GdSurface &surf, const Color &c, const Rect2 &geom, int width) {
+		ERR_FAIL_COND(surf.get_surface_type() != GdSurfaceImpl::DISPLAY_SURFACE);
+		if (Node2D *canvas = Object::cast_to<Node2D>(surf.get_as_display()->instance)) {
+			canvas->draw_rect(geom, c, false, width);
+		} else {
+			WARN_PRINT("Not an Node2D");
+		}
+	}
+	_FORCE_INLINE_ void rect(const GdSurface &surf, const std::vector<float> &c, const Rect2 &geom, int width) {
+		rect(surf, vec_to_color(c), geom, width);
+	}
+	_FORCE_INLINE_ void rect(const GdSurface &surf, const std::vector<float> &c, const std::vector<float> &geom, int width) {
+		rect(surf, vec_to_color(c), Rect2(geom[0], geom[1], geom[2], geom[3]), width);
+	}
+	_FORCE_INLINE_ void rect(const GdSurface &surf, int c, const Rect2 &geom, int width) {
+		rect(surf, Color::hex(c), geom, width);
+	}
+} // draw
 
 namespace display {
 	void set_caption(const std::string &caption) { }

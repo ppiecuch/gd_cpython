@@ -3,6 +3,8 @@
 #include "core/rid.h"
 #include "core/engine.h"
 #include "core/math/geometry.h"
+#include "scene/resources/font.h"
+#include "scene/resources/theme.h"
 #include "servers/visual_server.h"
 
 #include "pylib/godot/py_godot.h"
@@ -82,6 +84,37 @@ void CPythonRun::run_file(const String& p_python_file) {
 
 // Node instance
 
+#ifdef TOOLS_ENABLED
+Dictionary CPythonInstance::_edit_get_state() const {
+	Dictionary state = Node2D::_edit_get_state();
+	state["view_size"] = get_view_size();
+
+	return state;
+}
+
+void CPythonInstance::_edit_set_state(const Dictionary &p_state) {
+	Node2D::_edit_set_state(p_state);
+	set_view_size(p_state["view_size"]);
+}
+
+bool CPythonInstance::_edit_is_selected_on_click(const Point2 &p_point, double p_tolerance) const {
+	return _edit_get_rect().has_point(p_point);
+};
+
+Rect2 CPythonInstance::_edit_get_rect() const {
+	return Rect2(Point2(), get_view_size());
+}
+
+void CPythonInstance::_edit_set_rect(const Rect2 &p_rect) {
+	set_view_size(p_rect.size);
+	_change_notify();
+}
+
+bool CPythonInstance::_edit_use_rect() const {
+	return true;
+}
+#endif
+
 void CPythonInstance::_input(const Ref<InputEvent> &p_event) {
 	ERR_FAIL_COND(p_event.is_null());
 
@@ -103,6 +136,8 @@ void CPythonInstance::_input(const Ref<InputEvent> &p_event) {
 }
 
 void CPythonInstance::_notification(int p_what) {
+	static Color white = Color::named("white");
+
 	switch (p_what) {
 		case NOTIFICATION_ENTER_TREE: {
 			set_process(true);
@@ -121,6 +156,17 @@ void CPythonInstance::_notification(int p_what) {
 		case NOTIFICATION_DRAW: {
 			if (_running) {
 				_py->call(__draw_func); // call draw function
+			} else {
+				// not active indicator
+				draw_rect(Rect2(Point2(), view_size), white, false);
+				draw_line(Point2(), view_size, white);
+				draw_line(Point2(0, view_size.height), Point2(view_size.width, 0), white);
+				const String msg = "Not running";
+				Ref<Font> default_font = Theme::get_default()->get_font("_", "_");
+				const Size2 msg_size = default_font->get_string_size(msg);
+				if (view_size >  msg_size) {
+					draw_string(default_font, (view_size - msg_size) / 2, msg);
+				}
 			}
 		} break;
 		case NOTIFICATION_READY: {
@@ -237,6 +283,8 @@ void CPythonInstance::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_python_code"), &CPythonInstance::get_python_code);
 	ClassDB::bind_method(D_METHOD("set_python_file", "file"), &CPythonInstance::set_python_file);
 	ClassDB::bind_method(D_METHOD("get_python_file"), &CPythonInstance::get_python_file);
+	ClassDB::bind_method(D_METHOD("set_view_size", "file"), &CPythonInstance::set_view_size);
+	ClassDB::bind_method(D_METHOD("get_view_size"), &CPythonInstance::get_view_size);
 	ClassDB::bind_method(D_METHOD("set_autorun", "autorun"), &CPythonInstance::set_autorun);
 	ClassDB::bind_method(D_METHOD("is_autorun"), &CPythonInstance::is_autorun);
 	ClassDB::bind_method(D_METHOD("set_gd_build_func", "func"), &CPythonInstance::set_gd_build_func);
@@ -249,6 +297,7 @@ void CPythonInstance::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("run"), &CPythonInstance::run);
 	ClassDB::bind_method(D_METHOD("_input"), &CPythonInstance::_input);
 
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "view_size"), "set_view_size", "get_view_size");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "autorun"), "set_autorun", "is_autorun");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "gd_build_func"), "set_gd_build_func", "get_gd_build_func");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "python_code", PROPERTY_HINT_MULTILINE_TEXT, "", PROPERTY_USAGE_DEFAULT_INTL), "set_python_code", "get_python_code");
@@ -264,6 +313,8 @@ CPythonInstance::CPythonInstance() : _py(std::make_gd_unique_ptr(memnew(PyGodotI
 	_running = false;
 	_pausing = false;
 	_dirty = false;
+
+	view_size = Size2(640, 480);
 
 	python_gd_build_func = "_gd_build";
 	python_autorun = false;

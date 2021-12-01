@@ -33,6 +33,9 @@
 namespace py = pybind11;
 using namespace py::literals;
 
+template <typename... Args>
+using overload_cast_ = pybind11::detail::overload_cast_impl<Args...>;
+
 #ifdef _HAS_EXCEPTIONS
 static py::object py_eval(const char *expr, const py::object &o);
 #endif
@@ -424,10 +427,28 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def(py::self * real_t())
 		.def(py::self / real_t())
 		.def(-py::self)
-		.def("get_tuple", [](const Vector2 &v) { return std::make_tuple (v.x,v.y); })
+		.def("get_tuple", [](const Vector2 &v) { return std::make_tuple(v.x, v.y); })
 		.def("__copy__", [](const Vector2 &v){ return Vector2(v); })
 		.def("__repr__", [](const Vector2 &v) { return std::str(v); })
 		.def("__getitem__", [](const Vector2 &v, int index) { return v[index]; })
+		.attr("__version__") = VERSION_FULL_CONFIG;
+	py::class_<Vector2i>(m_core, "Vector2i")
+		.def(py::init<int, int>())
+		.def_readwrite("x", &Vector2i::x)
+		.def_readwrite("y", &Vector2i::y)
+		.def_readwrite("width", &Vector2i::x)
+		.def_readwrite("height", &Vector2i::y)
+		.def(py::self + py::self)
+		.def(py::self += py::self)
+		.def(py::self *= int())
+		.def(py::self - py::self)
+		.def(py::self * int())
+		.def(py::self / int())
+		.def(-py::self)
+		.def("get_tuple", [](const Vector2i &v) { return std::make_tuple(v.x, v.y); })
+		.def("__copy__", [](const Vector2i &v){ return Vector2i(v); })
+		.def("__repr__", [](const Vector2i &v) { return std::str(v); })
+		.def("__getitem__", [](const Vector2i &v, int index) { return v[index]; })
 		.attr("__version__") = VERSION_FULL_CONFIG;
 	py::class_<Vector3>(m_core, "Vector3")
 		.def(py::init<real_t, real_t, real_t>())
@@ -442,7 +463,7 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def(py::self * real_t())
 		.def(py::self / real_t())
 		.def(-py::self)
-		.def("get_tuple", [](const Vector3 &v) { return std::make_tuple (v.x,v.y, v.z);})
+		.def("get_tuple", [](const Vector3 &v) { return std::make_tuple(v.x, v.y, v.z);})
 		.def("__copy__", [](const Vector3 &v){ return Vector3(v); })
 		.def("__repr__", [](const Vector3 &v) { return std::str(v);})
 		.def("__getitem__", [](const Vector3 &v, int index) { return v[index]; })
@@ -455,6 +476,12 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def("get_size", &Rect2::get_size)
 		.def("set_size", &Rect2::set_size)
 		.def_property("size", &Rect2::get_size, &Rect2::set_size)
+		.def_property_readonly("left", [](const Rect2 &rc) { return rc.position.x; })
+		.def_property_readonly("top", [](const Rect2 &rc) { return rc.position.y; })
+		.def_property_readonly("right", [](const Rect2 &rc) { return rc.position.x + rc.size.width; })
+		.def_property_readonly("bottom", [](const Rect2 &rc) { return rc.position.y + rc.size.height; })
+		.def_property_readonly("width", [](const Rect2 &rc) { return rc.size.width; })
+		.def_property_readonly("height", [](const Rect2 &rc) { return rc.size.height; })
 		.def("get_area", &Rect2::get_area)
 		.def("get_center", &Rect2::get_center)
 		.def("interpolate", &Rect2::interpolate)
@@ -479,7 +506,10 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def("move_by", &Rect2::move_by)
 		.def(py::self == py::self)
 		.def(py::self != py::self)
-		.def("from_tuple", [](const Rect2 &rc, const py::tuple &args) { return Rect2(); })
+		.def("get_tuple", [](const Rect2 &rc) { return std::make_tuple(rc.position.x, rc.position.y, rc.size.width, rc.size.height); })
+		.def_static("from_tuple", [](const std::vector<real_t> &args) { return Rect2(args[0], args[1], args[2], args[3]); })
+		.def_static("from_pos_size", [](const Vector2 &pos, const Size2 &size) { return Rect2(pos, size); })
+		.def("__and__", [](const Rect2 &rc1, const Rect2 &rc2){ return rc1.clip(rc2); })
 		.def("__copy__", [](const Rect2 &rc){ return Rect2(rc); })
 		.def("__repr__", [](const Rect2 &rc) { return std::str(rc); })
 		.attr("__version__") = VERSION_FULL_CONFIG;
@@ -491,6 +521,12 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def("get_size", &Rect2i::get_size)
 		.def("set_size", &Rect2i::set_size)
 		.def_property("size", &Rect2i::get_size, &Rect2i::set_size)
+		.def_property_readonly("left", [](const Rect2i &rc) { return rc.position.x; })
+		.def_property_readonly("top", [](const Rect2i &rc) { return rc.position.y; })
+		.def_property_readonly("right", [](const Rect2i &rc) { return rc.position.x + rc.size.width; })
+		.def_property_readonly("bottom", [](const Rect2i &rc) { return rc.position.y + rc.size.height; })
+		.def_property_readonly("width", [](const Rect2i &rc) { return rc.size.width; })
+		.def_property_readonly("height", [](const Rect2i &rc) { return rc.size.height; })
 		.def("get_area", &Rect2i::get_area)
 		.def("intersects", &Rect2i::intersects)
 		.def("encloses", &Rect2i::encloses)
@@ -506,7 +542,9 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def("expand_to", &Rect2i::expand_to)
 		.def(py::self == py::self)
 		.def(py::self != py::self)
-		.def("from_tuple", [](const Rect2i &rc, const py::tuple &args) { return Rect2(); })
+		.def("get_tuple", [](const Rect2i &rc) { return std::make_tuple(rc.position.x, rc.position.y, rc.size.width, rc.size.height); })
+		.def_static("from_tuple", [](const std::vector<int> &args) { return Rect2i(args[0], args[1], args[2], args[3]); })
+		.def_static("from_pos_size", [](const Vector2i &pos, const Size2i &size) { return Rect2i(pos, size); })
 		.def("__copy__", [](const Rect2i &rc){ return Rect2i(rc); })
 		.def("__repr__", [](const Rect2i &rc) { return std::str(rc); })
 		.attr("__version__") = VERSION_FULL_CONFIG;
@@ -555,10 +593,14 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def(py::self /= real_t())
 		.def("__copy__", [](const Color &c){ return Color(c); })
 		.def("__repr__", [](const Color &c) { return std::str(c);})
+		.def("__getitem__", [](const Color &c, int index) { return c[index]; })
 		.attr("__version__") = VERSION_FULL_CONFIG;
 	py::class_<GdSurface>(m, "Surface")
+		.def(py::init<real_t, real_t>())
+		.def(py::init<std::vector<real_t>>())
 		.def("get_width", &GdSurface::get_width)
 		.def("get_height", &GdSurface::get_height)
+		.def("get_size", &GdSurface::get_size)
 		.def("fill", &GdSurface::fill)
 		.def("blit", &GdSurface::blit)
 		.def("blit", &GdSurface::blit_area)
@@ -572,6 +614,7 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 			}
 		})
 		.attr("__version__") = VERSION_FULL_CONFIG;
+	// gdgame.locals
 	py::module m_locals = m.def_submodule("locals", "Module contains various constants used by gdgame.");
 	m_locals.attr("K_SPACE") = py::int_(int(KEY_SPACE));
 	m_locals.attr("K_ESCAPE") = py::int_(int(KEY_ESCAPE));
@@ -636,6 +679,66 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 	m_locals.attr("MOUSEBUTTONUP") = py::int_(int(GdEvent::MOUSEBUTTONUP));
 	m_locals.attr("JOYBUTTONDOWN") = py::int_(int(GdEvent::JOYBUTTONDOWN));
 	m_locals.attr("JOYBUTTONUP") = py::int_(int(GdEvent::JOYBUTTONUP));
+	// gdgame.key
+	py::module m_key = m.def_submodule("key", "gdgame module to work with the keyboard.");
+	m_key.def("name", [](int key) {
+		switch (key) {
+			case KEY_SPACE: return "space";
+			case KEY_ESCAPE: return "escape";
+			case KEY_ENTER: return "return";
+			case KEY_KP_ENTER: return "enter";
+			case KEY_LEFT: return "left";
+			case KEY_RIGHT: return "right";
+			case KEY_UP: return "up";
+			case KEY_DOWN: return "down";
+			case KEY_PAGEUP: return "page up";
+			case KEY_PAGEDOWN: return "page down";
+			case KEY_A: return "a";
+			case KEY_B: return "b";
+			case KEY_C: return "c";
+			case KEY_D: return "d";
+			case KEY_E: return "e";
+			case KEY_F: return "f";
+			case KEY_G: return "g";
+			case KEY_H: return "h";
+			case KEY_I: return "i";
+			case KEY_J: return "j";
+			case KEY_K: return "k";
+			case KEY_L: return "l";
+			case KEY_M: return "m";
+			case KEY_N: return "n";
+			case KEY_O: return "o";
+			case KEY_P: return "p";
+			case KEY_Q: return "w";
+			case KEY_R: return "r";
+			case KEY_S: return "s";
+			case KEY_T: return "t";
+			case KEY_Y: return "y";
+			case KEY_0: return "0";
+			case KEY_1: return "1";
+			case KEY_2: return "2";
+			case KEY_3: return "3";
+			case KEY_4: return "4";
+			case KEY_5: return "5";
+			case KEY_6: return "6";
+			case KEY_7: return "7";
+			case KEY_8: return "8";
+			case KEY_9: return "9";
+			case KEY_F1: return "f1";
+			case KEY_F2: return "f2";
+			case KEY_F3: return "f3";
+			case KEY_F4: return "f4";
+			case KEY_F5: return "f5";
+			case KEY_F6: return "f6";
+			case KEY_F7: return "f7";
+			case KEY_F8: return "f8";
+			case KEY_F9: return "f9";
+			case KEY_F10: return "f10";
+			case KEY_F11: return "f11";
+			case KEY_F12: return "f12";
+		}
+		return "unknown";
+	});
 	// gdgame.time
 	py::module m_time = m.def_submodule("time", "gdgame module for monitoring time.");
 	m_time.def("get_ticks", []() { return OS::get_singleton()->get_ticks_msec(); });
@@ -675,6 +778,16 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 			}
 			return std::make_tuple(real_t(0), real_t(0));
 	});
+	m_mouse.def("get_pos", [](const GdSurface &surf) {
+		ERR_FAIL_COND_V(surf.get_surface_type() != GdSurfaceImpl::DISPLAY_SURFACE, std::make_tuple(real_t(0), real_t(0)));
+		if (Node2D *canvas = Object::cast_to<Node2D>(surf.get_as_display()->instance)) {
+			const Vector2 pos = canvas->get_local_mouse_position();
+			return std::make_tuple(pos.x, pos.y);
+		} else {
+			WARN_PRINT("Not an CanvasItem");
+		}
+		return std::make_tuple(real_t(0), real_t(0));
+	});
 	// gdgame.joystick
 	py::module m_joystick = m.def_submodule("joystick", "gdgame module for interacting with joysticks, gamepads, and trackballs.");
 	m_joystick.def("init", []() { });
@@ -686,6 +799,8 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def(py::init<const std::string&>())
 		.def("set_volume", &GdSound::set_volume)
 		.def("play", &GdSound::play)
+		.def("stop", &GdSound::stop)
+		.def("fadeout", &GdSound::fadeout)
 		.attr("__version__") = VERSION_FULL_CONFIG;
 	m_mixer.def("pre_init", [](int frequency=22050, int size=-16, int channels=2, int buffersize=4096) { });
 	m_mixer.def("init", []() { });
@@ -699,6 +814,10 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 	m_display.def("flip", &display::flip);
 	// gdgame.draw
 	py::module m_draw = m.def_submodule("draw", "gdgame module for drawing shapes.");
+	m_draw.def("rect", overload_cast_<const GdSurface&, const Color&, const Rect2&, int>()(&draw::rect));
+	m_draw.def("rect", overload_cast_<const GdSurface&, const std::vector<float>&, const std::vector<float>&, int>()(&draw::rect));
+	m_draw.def("rect", overload_cast_<const GdSurface&, const std::vector<float>&, const Rect2&, int>()(&draw::rect));
+	m_draw.def("rect", overload_cast_<const GdSurface&, int, const Rect2&, int>()(&draw::rect));
 	// gdgame.image
 	py::module m_image = m.def_submodule("image", "gdgame module for image transfer.");
 	m_image.def("load", &image::load);
@@ -709,7 +828,8 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def(py::init<const std::string&, int, int>())
 		.def("get_height", &GdFont::get_height)
 		.def("size", &GdFont::size)
-		.def("render", &GdFont::render)
+		.def("render", overload_cast_<const std::string&, bool, int>()(&GdFont::render))
+		.def("render", overload_cast_<const std::string&, bool, const std::vector<float>&>()(&GdFont::render))
 		.attr("__version__") = VERSION_FULL_CONFIG;
 	m_font.def("init", []() { });
 	m_font.def("quit", []() { });

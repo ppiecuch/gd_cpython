@@ -26,6 +26,7 @@ struct PyGodotInstance;
 class CPythonInstance : public Node2D {
 	GDCLASS(CPythonInstance, Node2D);
 
+	Size2 view_size;
 	String python_code;
 	String python_file;
 	bool python_autorun;
@@ -46,6 +47,18 @@ protected:
 	static void _bind_methods();
 
 public:
+#ifdef TOOLS_ENABLED
+	Dictionary _edit_get_state() const;
+	void _edit_set_state(const Dictionary &p_state);
+	bool _edit_is_selected_on_click(const Point2 &p_point, double p_tolerance) const;
+	Rect2 _edit_get_rect() const;
+	void _edit_set_rect(const Rect2 &p_rect);
+	bool _edit_use_rect() const;
+#endif
+
+	void set_view_size(const Size2 &p_size) { view_size = p_size; update(); }
+	Size2 get_view_size() const { return view_size; }
+
 	void set_python_code(const String &code);
 	String get_python_code() const;
 	void set_python_file(const String &path);
