@@ -134,13 +134,19 @@ struct GdTextSurface : public GdSurfaceImpl {
 	String text;
 	Color color;
 
+	Size2 text_size = Size2(1, 1);
+
 	_FORCE_INLINE_ Type get_surface_type() const { return TEXT_SURFACE; }
-	_FORCE_INLINE_ int get_width() const { ERR_FAIL_NULL_V(font, 1); return font->get_string_size(text).width; }
-	_FORCE_INLINE_ int get_height() const { ERR_FAIL_NULL_V(font, 1); return font->get_string_size(text).height; }
+	_FORCE_INLINE_ int get_width() const { ERR_FAIL_NULL_V(font, 1); return text_size.width; }
+	_FORCE_INLINE_ int get_height() const { ERR_FAIL_NULL_V(font, 1); return text_size.height; }
 
 	_FORCE_INLINE_ std::unique_ptr<GdSurfaceImpl> clone() const { return std::make_unique<GdTextSurface>(font, text, color); }
 
-	GdTextSurface(const Ref<Font> &font, const String &text, const Color &color) : font(font), text(text), color(color) { }
+	GdTextSurface(const Ref<Font> &font, const String &text, const Color &color) : font(font), text(text), color(color) {
+		if (font) {
+			text_size = font->get_string_size(text);
+		}
+	}
 };
 
 struct GdTextureSurface : public GdSurfaceImpl {
@@ -162,8 +168,18 @@ struct GdDisplaySurface : public GdSurfaceImpl {
 	Object *instance = nullptr;
 
 	_FORCE_INLINE_ Type get_surface_type() const { return DISPLAY_SURFACE; }
-	_FORCE_INLINE_ int get_width() const { return 1; }
-	_FORCE_INLINE_ int get_height() const { return 1; }
+
+	_FORCE_INLINE_ int get_width() const {
+		ERR_FAIL_NULL_V(instance, 1);
+		Size2 size = instance->call("get_view_size");
+		return MAX(size.width, 1);
+	}
+
+	_FORCE_INLINE_ int get_height() const {
+		ERR_FAIL_NULL_V(instance, 1);
+		Size2 size = instance->call("get_view_size");
+		return MAX(size.height, 1);
+	}
 
 	_FORCE_INLINE_ std::unique_ptr<GdSurfaceImpl> clone() const { return std::make_unique<GdDisplaySurface>(instance); }
 
