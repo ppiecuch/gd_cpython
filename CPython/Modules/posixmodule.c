@@ -3763,10 +3763,10 @@ posix_openpty(PyObject *self, PyObject *noargs)
 #endif
 #endif
 
-#ifdef HAVE_OPENPTY
+#if defined(HAVE_OPENPTY)
     if (openpty(&master_fd, &slave_fd, NULL, NULL, NULL) != 0)
         return posix_error();
-#elifdef HAVE__GETPTY
+#elif defined(HAVE__GETPTY)
     slave_name = _getpty(&master_fd, O_RDWR, 0666, 0);
     if (slave_name == NULL)
         return posix_error();

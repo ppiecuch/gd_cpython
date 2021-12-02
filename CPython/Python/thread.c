@@ -73,7 +73,7 @@ static int thread_debug = 0;
 
 static int initialized;
 
-void PyThread__init_thread(void); /* Forward */
+static void PyThread__init_thread(void); /* Forward */
 
 void
 PyThread_init_thread(void)
