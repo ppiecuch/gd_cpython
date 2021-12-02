@@ -284,7 +284,7 @@ struct GdSurface {
 	_FORCE_INLINE_ void blit(const GdSurface &source, const std::vector<real_t> &dest) {
 		ERR_FAIL_NULL(impl);
 		ERR_FAIL_NULL(source.impl);
-		ERR_FAIL_COND(dest.size() != 2 and dest.size() != 4);
+		ERR_FAIL_COND(dest.size() != 2 && dest.size() != 4);
 		switch(impl->get_surface_type()) {
 			case GdSurfaceImpl::TEXTURE_SURFACE: {
 				switch(source.impl->get_surface_type()) {
@@ -342,7 +342,7 @@ struct GdSurface {
 	}
 
 	_FORCE_INLINE_ void blit_or_area(const GdSurface &source, const std::vector<real_t> &dest, const std::vector<real_t> &area) {
-		ERR_FAIL_COND(area.size() != 0 and area.size() != 4);
+		ERR_FAIL_COND(area.size() != 0 && area.size() != 4);
 		switch (area.size()) {
 			case 0: blit(source, dest); return;
 			case 4: blit_area(source, dest, Rect2(area[0], area[1], area[2], area[3])); return;
@@ -352,7 +352,7 @@ struct GdSurface {
 	_FORCE_INLINE_ void blit_area(const GdSurface &source, const std::vector<real_t> &dest, const Rect2 &area) {
 		ERR_FAIL_NULL(impl);
 		ERR_FAIL_NULL(source.impl);
-		ERR_FAIL_COND(dest.size() != 2 and dest.size() != 4);
+		ERR_FAIL_COND(dest.size() != 2 && dest.size() != 4);
 		switch(impl->get_surface_type()) {
 			case GdSurfaceImpl::TEXTURE_SURFACE: {
 				switch(source.impl->get_surface_type()) {

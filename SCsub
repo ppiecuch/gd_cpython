@@ -6,7 +6,10 @@ Import("env")
 Import("env_modules")
 
 search_paths = ["#modules/gdextensions", ".", "pylib", "pylib/config", "pylib/include", "CPython/Include", "CPython/Godot"]
-defines = ["GD_PYTHON", " _CRT_SECURE_NO_WARNINGS"]
+defines = ["GD_PYTHON", "_CRT_SECURE_NO_WARNINGS"]
+if env["platform"] == "windows":
+	defines += ["MS_WINDOWS"]
+	search_paths += ["CPython/PC"]
 
 env_module = env.Clone()
 env_module.Append(CPPPATH=search_paths)
@@ -29,7 +32,7 @@ sources = [
 	"CPython/Python/compile.c",
 	"CPython/Python/dynload_stub.c",
 	"CPython/Python/dtoa.c",
-	"CPython/Python/dup2.c",
+#	"CPython/Python/dup2.c",
 	"CPython/Python/errors.c",
 	"CPython/Python/formatter_string.c",
 	"CPython/Python/formatter_unicode.c",
@@ -39,7 +42,7 @@ sources = [
 	"CPython/Python/getargs.c",
 	"CPython/Python/getcompiler.c",
 	"CPython/Python/getcopyright.c",
-	"CPython/Python/getcwd.c",
+#	"CPython/Python/getcwd.c",
 	"CPython/Python/getopt.c",
 	"CPython/Python/getplatform.c",
 	"CPython/Python/getversion.c",

@@ -12,6 +12,9 @@ static char modulePathes[1024+1];
 static char execPrefixPath[MAXPATHLEN+1];
 
 #ifndef HAVE_STPCPY
+#ifdef _MSC_VER
+# define __restrict__
+#endif
 char *stpcpy(char *__restrict__ dest, const char *__restrict__ src)
 {
 	while ((*dest++ = *src++) != '\0')

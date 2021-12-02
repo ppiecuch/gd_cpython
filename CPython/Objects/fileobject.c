@@ -9,9 +9,7 @@
 #endif /* HAVE_SYS_TYPES_H */
 
 #ifdef MS_WINDOWS
-#define fileno _fileno
 /* can simulate truncate with Win32 API functions; see file_truncate */
-#define HAVE_FTRUNCATE
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #endif
@@ -364,7 +362,7 @@ open_the_file(PyFileObject *f, char *name, char *mode)
             FILE_BEGIN_ALLOW_THREADS(f)
             /* PyUnicode_AS_UNICODE OK without thread
                lock as it is a simple dereference. */
-            f->f_fp = _wfopen(PyUnicode_AS_UNICODE(f->f_name),
+            f->f_fp = pywfopen(PyUnicode_AS_UNICODE(f->f_name),
                               PyUnicode_AS_UNICODE(wmode));
             FILE_END_ALLOW_THREADS(f)
         }
@@ -479,7 +477,7 @@ PyFile_FromFile(PYFILE *fp, char *name, char *mode, int (*close)(PYFILE *))
     o_name = PyString_FromString(name);
     if (o_name == NULL) {
         if (close != NULL && fp != NULL)
-            close(fp);
+            pyfclose(fp);
         Py_DECREF(f);
         return NULL;
     }
@@ -883,7 +881,7 @@ file_truncate(PyFileObject *f, PyObject *args)
         /* Truncate.  Note that this may grow the file! */
         FILE_BEGIN_ALLOW_THREADS(f)
         errno = 0;
-        hFile = (HANDLE)_get_osfhandle(fileno(f->f_fp));
+        hFile = (HANDLE)_get_osfhandle(pyfileno(f->f_fp));
         ret = hFile == (HANDLE)-1;
         if (ret == 0) {
             ret = SetEndOfFile(hFile) == 0;
@@ -2336,7 +2334,7 @@ file_init(PyObject *self, PyObject *args, PyObject *kwds)
                                     kwlist, &po, &mode, &bufsize)) {
         wideargument = 1;
         if (fill_file_fields(foself, NULL, po, mode,
-                             fclose) == NULL)
+                             pyfclose) == NULL)
             goto Error;
     } else {
         /* Drop the argument parsing error as narrow

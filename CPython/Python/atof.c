@@ -8,7 +8,7 @@
 
 #include <ctype.h>
 
-double atof(char *s)
+double atof(const char *s)
 {
     double a = 0.0;
     int e = 0;

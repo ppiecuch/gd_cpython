@@ -259,7 +259,7 @@ static Ref<BitmapFont> make_font_from_hstrip(const String &p_font_path, const St
 }
 
 void GdFont::load(const std::string &path, int size, int stretch) {
-	if (path.empty() or path == "_") {
+	if (path.empty() || path == "_") {
 #ifdef MODULE_FREETYPE_ENABLED
 		font = _get_default_dynamic_font(size, stretch);
 #else
@@ -843,14 +843,14 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 static py::object py_eval(const char *expr, const py::object &o) {
 	py::object res = py::none();
 	try {
-		if (not o.is_none()) {
+		if (!o.is_none()) {
 			auto locals = py::dict("_v"_a = o);
 			res = py::eval(expr, py::globals(), locals);
 		} else {
 			res = py::eval(expr, py::globals());
 		}
 	} catch (py::error_already_set &e) {
-		std::cout << "py_eval error_already_set: " << std::endl;
+		std::cout << "py_eval error_already_set: " << e.waht() << std::endl;
 	} catch (std::runtime_error &e) {
 		std::cout << "py_eval runtime_error: " << e.what() << std::endl;
 	} catch (...) {

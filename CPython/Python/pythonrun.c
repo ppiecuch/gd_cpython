@@ -34,7 +34,7 @@
 
 #ifdef MS_WINDOWS
 #undef BYTE
-#include "windows.h"
+#include <windows.h>
 #endif
 
 #ifndef Py_REF_DEBUG

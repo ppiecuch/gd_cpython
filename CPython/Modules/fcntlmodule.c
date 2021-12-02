@@ -31,6 +31,7 @@ conv_descriptor(PyObject *object, int *target)
 
 /* fcntl(fd, opt, [arg]) */
 
+#ifdef HAVE_FCNTL
 static PyObject *
 fcntl_fcntl(PyObject *self, PyObject *args)
 {
@@ -90,7 +91,7 @@ resulting value put in the arg buffer by the operating system.  The length\n\
 of the arg string is not allowed to exceed 1024 bytes.  If the arg given\n\
 is an integer or if none is specified, the result value is an integer\n\
 corresponding to the return value of the fcntl call in the C code.");
-
+#endif /* HAVE_FCNTL */
 
 /* ioctl(fd, opt, [arg]) */
 
@@ -248,6 +249,7 @@ code.");
 
 /* flock(fd, operation) */
 
+#ifdef HAVE_FCNTL
 static PyObject *
 fcntl_flock(PyObject *self, PyObject *args)
 {
@@ -305,8 +307,8 @@ Perform the lock operation op on file descriptor fd.  See the Unix \n\
 manual page for flock(3) for details.  (On some systems, this function is\n\
 emulated using fcntl().)");
 
-
 /* lockf(fd, operation) */
+
 static PyObject *
 fcntl_lockf(PyObject *self, PyObject *args)
 {
@@ -403,16 +405,21 @@ starts.  whence is as with fileobj.seek(), specifically:\n\
     0 - relative to the start of the file (SEEK_SET)\n\
     1 - relative to the current buffer position (SEEK_CUR)\n\
     2 - relative to the end of the file (SEEK_END)");
+#endif /* HAVE_FCNTL */
 
 /* List of functions */
 
 static PyMethodDef fcntl_methods[] = {
+#ifdef HAVE_FCNTL
     {"fcntl",           fcntl_fcntl, METH_VARARGS, fcntl_doc},
+#endif
 #ifdef HAVE_IOCTL
     {"ioctl",           fcntl_ioctl, METH_VARARGS, ioctl_doc},
 #endif
+#ifdef HAVE_FCNTL
     {"flock",           fcntl_flock, METH_VARARGS, flock_doc},
     {"lockf",       fcntl_lockf, METH_VARARGS, lockf_doc},
+#endif
     {NULL,              NULL}           /* sentinel */
 };
 
@@ -441,10 +448,12 @@ ins(PyObject* d, char* symbol, long value)
 static int
 all_ins(PyObject* d)
 {
+#ifdef HAVE_FCNTL
     if (ins(d, "LOCK_SH", (long)LOCK_SH)) return -1;
     if (ins(d, "LOCK_EX", (long)LOCK_EX)) return -1;
     if (ins(d, "LOCK_NB", (long)LOCK_NB)) return -1;
     if (ins(d, "LOCK_UN", (long)LOCK_UN)) return -1;
+#endif
 /* GNU extensions, as of glibc 2.2.4 */
 #ifdef LOCK_MAND
     if (ins(d, "LOCK_MAND", (long)LOCK_MAND)) return -1;

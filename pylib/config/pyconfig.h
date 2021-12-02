@@ -6,6 +6,79 @@
 # include <AvailabilityMacros.h>
 #endif
 
+#ifdef MS_WINDOWS
+#ifndef __cplusplus /* macros can cause compilation errors outside c */
+# include <stdio.h>
+# include <stdlib.h>
+# include <time.h>
+# include <process.h>
+# include <io.h>
+# define open _open
+# define close _close
+# define read _read
+# define write _write
+# define fileno _fileno
+# define lseek _lseek
+# define isatty _isatty
+# define unlink _unlink
+# define getcwd _getcwd
+# define umask _umask
+# define execv _execv
+# define execve _execve
+# define putenv _putenv
+# define getpid _getpid
+# define dup _dup
+# define dup2 _dup2
+# include <string.h>
+# define strdup _strdup
+# define copysign _copysign
+# define stricmp _stricmp
+# define hypot _hypot
+#endif // __cplusplus
+#endif /* MS_WINDOWS_MACROS */
+
+#ifdef MS_WINDOWS
+# include <float.h>
+# define Py_IS_NAN _isnan
+# define Py_IS_INFINITY(X) (!_finite(X) && !_isnan(X))
+# define Py_IS_FINITE(X) _finite(X)
+#endif
+
+#ifdef _WIN64
+# define MS_WIN64
+#endif
+
+#ifdef MS_WINDOWS
+#define NT_THREADS
+#ifndef NETSCAPE_PI
+# define USE_SOCKET
+#endif
+#endif
+
+#ifdef MS_WINDOWS
+#ifdef __GNUC__
+# define PY_LONG_LONG long long
+# define PY_LLONG_MIN LLONG_MIN
+# define PY_LLONG_MAX LLONG_MAX
+# define PY_ULLONG_MAX ULLONG_MAX
+#endif /* GNUC */
+#ifndef PY_LONG_LONG
+# define PY_LONG_LONG __int64
+# define PY_LLONG_MAX _I64_MAX
+# define PY_LLONG_MIN _I64_MIN
+# define PY_ULLONG_MAX _UI64_MAX
+#endif
+#endif /* MS_WINDOWS */
+
+#ifdef _DEBUG
+ #define Py_DEBUG
+#endif
+
+/* define some ANSI types that are not defined in earlier Win headers */
+#if defined(_MSC_VER) && _MSC_VER >= 1200
+/* This file only exists in VC 6.0 or higher */
+#include <basetsd.h>
+#endif
 
 /* Define if building universal (internal helper macro) */
 #define AC_APPLE_UNIVERSAL_BUILD 1
@@ -55,7 +128,9 @@
 #define HAVE_ADDRINFO 1
 
 /* Define to 1 if you have the `alarm' function. */
+#ifndef MS_WINDOWS
 #define HAVE_ALARM 1
+#endif
 
 /* Define this if your time.h defines altzone. */
 /* #undef HAVE_ALTZONE */
@@ -106,27 +181,33 @@
 /* #undef HAVE_CHFLAGS */
 
 /* Define to 1 if you have the `chown' function. */
+#ifndef MS_WINDOWS
 #define HAVE_CHOWN 1
+#endif
 
 /* Define if you have the 'chroot' function. */
+#ifndef MS_WINDOWS
 #define HAVE_CHROOT 1
+#endif
 
 /* Define to 1 if you have the `clock' function. */
 #define HAVE_CLOCK 1
 
 /* Define to 1 if you have the `confstr' function. */
-#ifndef __ANDROID__
+#if !defined(__ANDROID__) && !defined(MS_WINDOWS)
 #define HAVE_CONFSTR 1
 #endif
 
 /* Define to 1 if you have the <conio.h> header file. */
-/* #undef HAVE_CONIO_H */
+#ifdef MS_WINDOWS
+#define HAVE_CONIO_H
+#endif
 
 /* Define to 1 if you have the `copysign' function. */
 #define HAVE_COPYSIGN 1
 
 /* Define to 1 if you have the `ctermid' function. */
-#ifndef __ANDROID__
+#if !defined(__ANDROID__) && !defined(MS_WINDOWS)
 #define HAVE_CTERMID 1
 #endif
 
@@ -164,26 +245,30 @@
 /* #undef HAVE_DECL_TZNAME */
 
 /* Define to 1 if you have the device macros. */
-#ifndef __ANDROID__
+#if !defined(__ANDROID__) && !defined(MS_WINDOWS)
 #define HAVE_DEVICE_MACROS 1
 #endif
 
 /* Define if we have /dev/ptc. */
-#ifndef __APPLE__
+#if !defined(__APPLE__) && !defined(MS_WINDOWS)
 #define HAVE_DEV_PTC
 #endif
 
 /* Define if we have /dev/ptmx. */
-#ifndef __ANDROID__
+#if !defined(__ANDROID__) && !defined(MS_WINDOWS)
 #define HAVE_DEV_PTMX 1
 #endif
 
 /* Define to 1 if you have the <direct.h> header file. */
-/* #undef HAVE_DIRECT_H */
+#ifdef MS_WINDOWS
+#define HAVE_DIRECT_H
+#endif
 
 /* Define to 1 if you have the <dirent.h> header file, and it defines `DIR'.
  */
+#ifndef MS_WINDOWS
 #define HAVE_DIRENT_H 1
+#endif
 
 /* Define to 1 if you have the <dlfcn.h> header file. */
 /* #define HAVE_DLFCN_H 1 */
@@ -216,16 +301,27 @@
 #define HAVE_EXPM1 1
 
 /* Define if you have the 'fchdir' function. */
+#ifndef MS_WINDOWS
 #define HAVE_FCHDIR 1
+#endif
 
 /* Define to 1 if you have the `fchmod' function. */
+#ifndef MS_WINDOWS
 #define HAVE_FCHMOD 1
+#endif
 
 /* Define to 1 if you have the `fchown' function. */
+#ifndef MS_WINDOWS
 #define HAVE_FCHOWN 1
+#endif
 
 /* Define to 1 if you have the <fcntl.h> header file. */
 #define HAVE_FCNTL_H 1
+
+/* Define to 1 if you have the fcntl function. */
+#ifndef MS_WINDOWS
+#define HAVE_FCNTL 1
+#endif
 
 /* Define if you have the 'fdatasync' function. */
 /* #undef HAVE_FDATASYNC */
@@ -234,10 +330,14 @@
 #define HAVE_FINITE 1
 
 /* Define to 1 if you have the `flock' function. */
+#ifndef MS_WINDOWS
 #define HAVE_FLOCK 1
+#endif
 
 /* Define to 1 if you have the `fork' function. */
+#ifndef MS_WINDOWS
 #define HAVE_FORK 1
+#endif
 
 /* Define to 1 if you have the `forkpty' function. */
 #ifdef __APPLE__
@@ -247,7 +347,9 @@
 #endif
 
 /* Define to 1 if you have the `fpathconf' function. */
+#ifndef MS_WINDOWS
 #define HAVE_FPATHCONF 1
+#endif
 
 /* Define to 1 if you have the `fseek64' function. */
 /* #undef HAVE_FSEEK64 */
@@ -270,7 +372,9 @@
 #endif
 
 /* Define to 1 if you have the `ftruncate' function. */
+#ifndef MS_WINDOWS
 #define HAVE_FTRUNCATE 1
+#endif
 
 /* Define to 1 if you have the `gai_strerror' function. */
 #define HAVE_GAI_STRERROR 1
@@ -280,8 +384,10 @@
 
 /* Define if we can use gcc inline assembler to get and set x87 control word
  */
-#if defined(__x86_64__) || defined(_M_X64) || defined(i386) || defined(__i386__) || defined(__i386) || defined(_M_IX86)
-#define HAVE_GCC_ASM_FOR_X87 1
+#ifndef _MSC_VER
+# if defined(__x86_64__) || defined(_M_X64) || defined(i386) || defined(__i386__) || defined(__i386) || defined(_M_IX86)
+# define HAVE_GCC_ASM_FOR_X87 1
+# endif
 #endif
 
 /* Define if you have the getaddrinfo function. */
@@ -294,7 +400,9 @@
 #define HAVE_GETC_UNLOCKED 1
 
 /* Define to 1 if you have the `getgroups' function. */
+#ifndef MS_WINDOWS
 #define HAVE_GETGROUPS 1
+#endif
 
 /* Define to 1 if you have the `gethostbyname' function. */
 #define HAVE_GETHOSTBYNAME 1
@@ -312,15 +420,19 @@
 /* #undef HAVE_GETHOSTBYNAME_R_6_ARG */
 
 /* Define to 1 if you have the `getitimer' function. */
+#ifndef MS_WINDOWS
 #define HAVE_GETITIMER 1
+#endif
 
 /* Define to 1 if you have the `getloadavg' function. */
-#ifndef __ANDROID__
+#if !defined(__ANDROID__) && !defined(MS_WINDOWS)
 #define HAVE_GETLOADAVG 1
 #endif
 
 /* Define to 1 if you have the `getlogin' function. */
+#ifndef MS_WINDOWS
 #define HAVE_GETLOGIN 1
+#endif
 
 /* Define to 1 if you have the `getnameinfo' function. */
 #define HAVE_GETNAMEINFO 1
@@ -332,10 +444,14 @@
 #define HAVE_GETPEERNAME 1
 
 /* Define to 1 if you have the `getpgid' function. */
+#ifndef MS_WINDOWS
 #define HAVE_GETPGID 1
+#endif
 
 /* Define to 1 if you have the `getpgrp' function. */
+#ifndef MS_WINDOWS
 #define HAVE_GETPGRP 1
+#endif
 
 /* Define to 1 if you have the `getpid' function. */
 #define HAVE_GETPID 1
@@ -353,7 +469,9 @@
 /* #undef HAVE_GETRESUID */
 
 /* Define to 1 if you have the `getsid' function. */
+#ifndef MS_WINDOWS
 #define HAVE_GETSID 1
+#endif
 
 /* Define to 1 if you have the `getspent' function. */
 /* #undef HAVE_GETSPENT */
@@ -362,13 +480,19 @@
 /* #undef HAVE_GETSPNAM */
 
 /* Define to 1 if you have the `gettimeofday' function. */
+#ifndef MS_WINDOWS
 #define HAVE_GETTIMEOFDAY 1
+#endif
 
 /* Define to 1 if you have the `getwd' function. */
+#ifndef MS_WINDOWS
 #define HAVE_GETWD 1
+#endif
 
 /* Define to 1 if you have the <grp.h> header file. */
+#ifndef MS_WINDOWS
 #define HAVE_GRP_H 1
+#endif
 
 /* Define if you have the 'hstrerror' function. */
 #define HAVE_HSTRERROR 1
@@ -386,19 +510,27 @@
 #define HAVE_INET_PTON 1
 
 /* Define to 1 if you have the `initgroups' function. */
+#ifndef MS_WINDOWS
 #define HAVE_INITGROUPS 1
+#endif
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #define HAVE_INTTYPES_H 1
 
 /* Define to 1 if you have the <io.h> header file. */
-/* #undef HAVE_IO_H */
+#ifdef MS_WINDOWS
+#define HAVE_IO_H
+#endif
 
 /* Define to 1 if you have the `kill' function. */
+#ifndef MS_WINDOWS
 #define HAVE_KILL 1
+#endif
 
 /* Define to 1 if you have the `killpg' function. */
+#ifndef MS_WINDOWS
 #define HAVE_KILLPG 1
+#endif
 
 /* Define if you have the 'kqueue' functions. */
 #ifdef __APPLE__
@@ -406,7 +538,9 @@
 #endif
 
 /* Define to 1 if you have the <langinfo.h> header file. */
+#ifndef MS_WINDOWS
 #define HAVE_LANGINFO_H 1
+#endif
 
 /* Define to 1 if you have the `nl_langinfo' function. */
 #ifndef __ANDROID__
@@ -429,7 +563,7 @@
 /* #undef HAVE_LCHFLAGS */
 
 /* Define to 1 if you have the `lchmod' function. */
-#ifndef __ANDROID__
+#if !defined(__ANDROID__) && !defined(MS_WINDOWS)
 #define HAVE_LCHMOD 1
 #endif
 
@@ -458,7 +592,9 @@
 /* #define HAVE_LIBUTIL_H 1 */
 
 /* Define if you have the 'link' function. */
+#ifndef MS_WINDOWS
 #define HAVE_LINK 1
+#endif
 
 /* Define to 1 if you have the <linux/netlink.h> header file. */
 #if defined(__ANDROID__) && defined(__linux__)
@@ -480,13 +616,16 @@
 #define HAVE_LONG_DOUBLE 1
 
 /* Define this if you have the type long long. */
+/* 64 bit ints are usually spelt __int64 unless compiler has overridden */
 #define HAVE_LONG_LONG 1
 
 /* Define to 1 if you have the `lstat' function. */
+#ifndef MS_WINDOWS
 #define HAVE_LSTAT 1
+#endif
 
 /* Define this if you have the makedev macro. */
-#ifndef __ANDROID__
+#if !defined(__ANDROID__) && !defined(MS_WINDOWS)
 #define HAVE_MAKEDEV 1
 #endif
 
@@ -497,10 +636,14 @@
 #define HAVE_MEMORY_H 1
 
 /* Define to 1 if you have the `mkfifo' function. */
+#ifndef MS_WINDOWS
 #define HAVE_MKFIFO 1
+#endif
 
 /* Define to 1 if you have the `mknod' function. */
+#ifndef MS_WINDOWS
 #define HAVE_MKNOD 1
+#endif
 
 /* Define to 1 if you have the `mktime' function. */
 #define HAVE_MKTIME 1
@@ -518,7 +661,9 @@
 /* #undef HAVE_NETPACKET_PACKET_H */
 
 /* Define to 1 if you have the `nice' function. */
+#ifndef MS_WINDOWS
 #define HAVE_NICE 1
+#endif
 
 /* Define to 1 if you have the `openpty' function. */
 #ifdef __APPLE__
@@ -529,10 +674,14 @@
 #define HAVE_OSX105_SDK 1
 
 /* Define to 1 if you have the `pathconf' function. */
+#ifndef MS_WINDOWS
 #define HAVE_PATHCONF 1
+#endif
 
 /* Define to 1 if you have the `pause' function. */
+#ifndef MS_WINDOWS
 #define HAVE_PAUSE 1
+#endif
 
 /* Define to 1 if you have the `plock' function. */
 /* #undef HAVE_PLOCK */
@@ -544,7 +693,9 @@
 /* #undef HAVE_POLL_H */
 
 /* Define to 1 if you have the <process.h> header file. */
-/* #undef HAVE_PROCESS_H */
+#ifdef MS_WINDOWS
+#define HAVE_PROCESS_H */
+#endif
 
 /* Define if your compiler supports function prototype */
 #define HAVE_PROTOTYPES 1
@@ -556,7 +707,9 @@
 /* #undef HAVE_PTHREAD_DESTRUCTOR */
 
 /* Define to 1 if you have the <pthread.h> header file. */
+#ifndef MS_WINDOWS
 #define HAVE_PTHREAD_H 1
+#endif
 
 /* Define to 1 if you have the `pthread_init' function. */
 #define HAVE_PTHREAD_INIT 1
@@ -571,7 +724,9 @@
 #define HAVE_PUTENV 1
 
 /* Define to 1 if you have the `readlink' function. */
+#ifndef MS_WINDOWS
 #define HAVE_READLINK 1
+#endif
 
 /* Define to 1 if you have the `realpath' function. */
 #define HAVE_REALPATH 1
@@ -601,7 +756,9 @@
 #define HAVE_ROUND 1
 
 /* Define to 1 if you have the `select' function. */
+#ifndef MS_WINDOWS
 #define HAVE_SELECT 1
+#endif
 
 /* Define to 1 if you have the `sem_getvalue' function. */
 #define HAVE_SEM_GETVALUE 1
@@ -616,31 +773,47 @@
 #define HAVE_SEM_UNLINK 1
 
 /* Define to 1 if you have the `setegid' function. */
+#ifndef MS_WINDOWS
 #define HAVE_SETEGID 1
+#endif
 
 /* Define to 1 if you have the `seteuid' function. */
+#ifndef MS_WINDOWS
 #define HAVE_SETEUID 1
+#endif
 
 /* Define to 1 if you have the `setgid' function. */
+#ifndef MS_WINDOWS
 #define HAVE_SETGID 1
+#endif
 
 /* Define if you have the 'setgroups' function. */
+#ifndef MS_WINDOWS
 #define HAVE_SETGROUPS 1
+#endif
 
 /* Define to 1 if you have the `setitimer' function. */
+#ifndef MS_WINDOWS
 #define HAVE_SETITIMER 1
+#endif
 
 /* Define to 1 if you have the `setlocale' function. */
 #define HAVE_SETLOCALE 1
 
 /* Define to 1 if you have the `setpgid' function. */
+#ifndef MS_WINDOWS
 #define HAVE_SETPGID 1
+#endif
 
 /* Define to 1 if you have the `setpgrp' function. */
+#ifndef MS_WINDOWS
 #define HAVE_SETPGRP 1
+#endif
 
 /* Define to 1 if you have the `setregid' function. */
+#ifndef MS_WINDOWS
 #define HAVE_SETREGID 1
+#endif
 
 /* Define to 1 if you have the `setresgid' function. */
 /* #undef HAVE_SETRESGID */
@@ -649,13 +822,19 @@
 /* #undef HAVE_SETRESUID */
 
 /* Define to 1 if you have the `setreuid' function. */
+#ifndef MS_WINDOWS
 #define HAVE_SETREUID 1
+#endif
 
 /* Define to 1 if you have the `setsid' function. */
+#ifndef MS_WINDOWS
 #define HAVE_SETSID 1
+#endif
 
 /* Define to 1 if you have the `setuid' function. */
+#ifndef MS_WINDOWS
 #define HAVE_SETUID 1
+#endif
 
 /* Define to 1 if you have the `setvbuf' function. */
 #define HAVE_SETVBUF 1
@@ -664,10 +843,14 @@
 /* #undef HAVE_SHADOW_H */
 
 /* Define to 1 if you have the `sigaction' function. */
+#ifndef MS_WINDOWS
 #define HAVE_SIGACTION 1
+#endif
 
 /* Define to 1 if you have the `siginterrupt' function. */
+#ifndef MS_WINDOWS
 #define HAVE_SIGINTERRUPT 1
+#endif
 
 /* Define to 1 if you have the <signal.h> header file. */
 #define HAVE_SIGNAL_H 1
@@ -693,19 +876,23 @@
 #define HAVE_SPAWN_H 1
 
 /* Define if your compiler provides ssize_t */
-#ifdef _WIN32
-#undef HAVE_SSIZE_T
+#ifdef MS_WINDOWS
+/* Define like size_t, omitting the "unsigned" */
+#ifdef MS_WIN64
+typedef __int64 ssize_t;
 #else
-#define HAVE_SSIZE_T 1
+typedef _W64 int ssize_t;
 #endif
+#endif /* MS_WINDOWS */
+#define HAVE_SSIZE_T 1
 
 #ifdef __APPLE__
 /* Define if you have struct stat.st_mtimensec */
 #define HAVE_STAT_TV_NSEC2 1
-#else
+#elif !defined(MS_WINDOWS)
 /* Define if you have struct stat.st_mtim.tv_nsec */
-#define HAVE_STAT_TV_NSEC
-#endif
+# define HAVE_STAT_TV_NSEC
+#endif /* __APPLE__ */
 
 /* Define if your compiler supports variable length function prototypes (e.g.
  void fprintf(FILE *, char *, ...);) *and* <stdarg.h> */
@@ -718,7 +905,7 @@
 #define HAVE_STDLIB_H 1
 
 /* Define to 1 if you have the `stpcpy' function. */
-#ifndef __ANDROID__
+#if !defined(__ANDROID__) && !defined(MS_WINDOWS)
 #define HAVE_STPCPY 1
 #endif
 
@@ -743,10 +930,14 @@
 #endif
 
 /* Define to 1 if `st_blksize' is a member of `struct stat'. */
+#ifndef MS_WINDOWS
 #define HAVE_STRUCT_STAT_ST_BLKSIZE 1
+#endif
 
 /* Define to 1 if `st_blocks' is a member of `struct stat'. */
+#ifndef MS_WINDOWS
 #define HAVE_STRUCT_STAT_ST_BLOCKS 1
+#endif
 
 /* Define to 1 if `st_flags' is a member of `struct stat'. */
 #ifdef __APPLE__
@@ -769,13 +960,19 @@
 #define HAVE_ST_BLOCKS 1
 
 /* Define if you have the 'symlink' function. */
+#ifndef MS_WINDOWS
 #define HAVE_SYMLINK 1
+#endif
 
 /* Define to 1 if you have the `sysconf' function. */
+#ifndef MS_WINDOWS
 #define HAVE_SYSCONF 1
+#endif
 
 /* Define to 1 if you have the <sysexits.h> header file. */
+#ifndef MS_WINDOWS
 #define HAVE_SYSEXITS_H 1
+#endif
 
 /* Define to 1 if you have the <sys/audioio.h> header file. */
 /* #undef HAVE_SYS_AUDIOIO_H */
@@ -796,7 +993,9 @@
 #endif
 
 /* Define to 1 if you have the <sys/file.h> header file. */
+#ifndef MS_WINDOWS
 #define HAVE_SYS_FILE_H 1
+#endif
 
 /* Define to 1 if you have the <sys/loadavg.h> header file. */
 /* #undef HAVE_SYS_LOADAVG_H */
@@ -815,16 +1014,22 @@
 /* #undef HAVE_SYS_NDIR_H */
 
 /* Define to 1 if you have the <sys/param.h> header file. */
+#ifndef MS_WINDOWS
 #define HAVE_SYS_PARAM_H 1
+#endif
 
 /* Define to 1 if you have the <sys/poll.h> header file. */
+#ifndef MS_WINDOWS
 #define HAVE_SYS_POLL_H 1
+#endif
 
 /* Define to 1 if you have the <sys/resource.h> header file. */
+#ifndef MS_WINDOWS
 #define HAVE_SYS_RESOURCE_H 1
+#endif
 
 /* Define to 1 if you have the <sys/select.h> header file. */
-#ifndef _WIN32
+#ifndef MS_WINDOWS
 #define HAVE_SYS_SELECT_H 1
 #endif
 
@@ -841,10 +1046,12 @@
 /* #undef HAVE_SYS_TERMIO_H */
 
 /* Define to 1 if you have the <sys/times.h> header file. */
+#ifndef MS_WINDOWS
 #define HAVE_SYS_TIMES_H 1
+#endif
 
 /* Define to 1 if you have the <sys/time.h> header file. */
-#ifndef _WIN32
+#ifndef MS_WINDOWS
 #define HAVE_SYS_TIME_H 1
 #endif
 
@@ -852,19 +1059,29 @@
 #define HAVE_SYS_TYPES_H 1
 
 /* Define to 1 if you have the <sys/un.h> header file. */
+#ifndef MS_WINDOWS
 #define HAVE_SYS_UN_H 1
+#endif
 
 /* Define to 1 if you have the <sys/utsname.h> header file. */
+#ifndef MS_WINDOWS
 #define HAVE_SYS_UTSNAME_H 1
+#endif
 
 /* Define to 1 if you have the <sys/wait.h> header file. */
+#ifndef MS_WINDOWS
 #define HAVE_SYS_WAIT_H 1
+#endif
 
 /* Define to 1 if you have the `tcgetpgrp' function. */
+#ifndef MS_WINDOWS
 #define HAVE_TCGETPGRP 1
+#endif
 
 /* Define to 1 if you have the `tcsetpgrp' function. */
+#ifndef MS_WINDOWS
 #define HAVE_TCSETPGRP 1
+#endif
 
 /* Define to 1 if you have the `tempnam' function. */
 #define HAVE_TEMPNAM 1
@@ -885,7 +1102,9 @@
 #define HAVE_TIMEGM 1
 
 /* Define to 1 if you have the `times' function. */
+#ifndef MS_WINDOWS
 #define HAVE_TIMES 1
+#endif
 
 /* Define to 1 if you have the `tmpfile' function. */
 #define HAVE_TMPFILE 1
@@ -898,14 +1117,18 @@
 
 /* Define to 1 if your `struct tm' has `tm_zone'. Deprecated, use
  `HAVE_STRUCT_TM_TM_ZONE' instead. */
+#ifndef MS_WINDOWS
 #define HAVE_TM_ZONE 1
+#endif
 
 /* Define to 1 if you have the `truncate' function. */
 #define HAVE_TRUNCATE 1
 
 /* Define to 1 if you don't have `tm_zone' but do have the external array
  `tzname'. */
-/* #undef HAVE_TZNAME */
+#ifdef MS_WINDOWS
+#define HAVE_TZNAME
+#endif
 
 /* Define this if you have tcl and TCL_UTF_MAX==6 */
 /* #undef HAVE_UCS4_TCL */
@@ -914,15 +1137,19 @@
 #define HAVE_UINTPTR_T 1
 
 /* Define to 1 if you have the `uname' function. */
+#ifndef MS_WINDOWS
 #define HAVE_UNAME 1
+#endif
 
 /* Define to 1 if you have the <unistd.h> header file. */
-#ifndef _WIN32
+#ifndef MS_WINDOWS
 #define HAVE_UNISTD_H 1
 #endif
 
 /* Define to 1 if you have the `unsetenv' function. */
+#ifndef MS_WINDOWS
 #define HAVE_UNSETENV 1
+#endif
 
 /* Define if you have a useable wchar_t type defined in wchar.h; useable means
  wchar_t must be an unsigned type with at least 16 bits. (see
@@ -935,21 +1162,29 @@
 #endif
 
 /* Define to 1 if you have the `utimes' function. */
+#ifndef MS_WINDOWS
 #define HAVE_UTIMES 1
+#endif
 
 /* Define to 1 if you have the <utime.h> header file. */
+#ifndef MS_WINDOWS
 #define HAVE_UTIME_H 1
+#endif
 
 /* Define to 1 if you have the `wait3' function. */
-#ifndef __ANDROID__
+#if !defined(__ANDROID__) && !defined(MS_WINDOWS)
 #define HAVE_WAIT3 1
 #endif
 
 /* Define to 1 if you have the `wait4' function. */
+#ifndef MS_WINDOWS
 #define HAVE_WAIT4 1
+#endif
 
 /* Define to 1 if you have the `waitpid' function. */
+#ifndef MS_WINDOWS
 #define HAVE_WAITPID 1
+#endif
 
 /* Define if the compiler provides a wchar.h header file. */
 #define HAVE_WCHAR_H 1
@@ -959,7 +1194,9 @@
 
 /* Define if tzset() actually switches the local timezone in a meaningful way.
  */
+#ifndef MS_WINDOWS
 #define HAVE_WORKING_TZSET 1
+#endif
 
 /* Define if the zlib library has inflateCopy */
 #define HAVE_ZLIB_COPY 1
@@ -1041,7 +1278,11 @@
 /* #undef SETPGRP_HAVE_ARG */
 
 /* Define this to be extension of shared libraries (including the dot!). */
+#ifdef MS_WINDOWS
+#define SHLIB_EXT ".dll"
+#else
 #define SHLIB_EXT ".so"
+#endif
 
 /* Define if i>>j for signed int i does not extend the sign bit when i < 0 */
 /* #undef SIGNED_RIGHT_SHIFT_ZERO_FILLS */
@@ -1109,7 +1350,7 @@
 #endif
 
 /* The size of `void *', as computed by sizeof. */
-#ifdef __LP64__
+#if defined(__LP64__) || defined(MS_WIN64)
 #define SIZEOF_VOID_P 8
 #else
 #define SIZEOF_VOID_P 4
@@ -1132,7 +1373,7 @@
 #define TANH_PRESERVES_ZERO_SIGN 1
 
 /* Define to 1 if you can safely include both <sys/time.h> and <time.h>. */
-#ifndef _WIN32
+#ifndef MS_WINDOWS
 #define TIME_WITH_SYS_TIME 1
 #endif
 
@@ -1300,7 +1541,9 @@
 /* #undef const */
 
 /* Define to `int' if <sys/types.h> doesn't define. */
-/* #undef gid_t */
+#ifdef MS_WINDOWS
+typedef int gid_t;
+#endif
 
 /* Define to the type of a signed integer type of width exactly 32 bits if
  such a type exists and the standard includes do not define it. */
@@ -1311,13 +1554,17 @@
 /* #undef int64_t */
 
 /* Define to `int' if <sys/types.h> does not define. */
-/* #undef mode_t */
+#ifdef MS_WINDOWS
+typedef int mode_t;
+#endif
 
 /* Define to `long int' if <sys/types.h> does not define. */
 /* #undef off_t */
 
 /* Define to `int' if <sys/types.h> does not define. */
-/* #undef pid_t */
+#ifdef MS_WINDOWS
+typedef int pid_t;
+#endif
 
 /* Define to empty if the keyword does not work. */
 /* #undef signed */
@@ -1329,7 +1576,9 @@
 /* #undef socklen_t */
 
 /* Define to `int' if <sys/types.h> doesn't define. */
-/* #undef uid_t */
+#ifdef MS_WINDOWS
+typedef int uid_t;
+#endif
 
 /* Define to the type of an unsigned integer type of width exactly 32 bits if
  such a type exists and the standard includes do not define it. */

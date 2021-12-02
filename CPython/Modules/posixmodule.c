@@ -282,6 +282,10 @@ extern int lstat(const char *, struct stat *);
 #define pclose  _pclose
 #endif /* _MSC_VER */
 
+#ifdef GD_PYTHON
+#undef HAVE_POPEN /* Godot */
+#endif
+
 #if defined(PYCC_VACPP) && defined(PYOS_OS2)
 #include <io.h>
 #endif /* OS2 */
@@ -3745,7 +3749,6 @@ posix_fork(PyObject *self, PyObject *noargs)
 PyDoc_STRVAR(posix_openpty__doc__,
 "openpty() -> (master_fd, slave_fd)\n\n\
 Open a pseudo-terminal, returning open fd's for both master and slave end.\n");
-
 static PyObject *
 posix_openpty(PyObject *self, PyObject *noargs)
 {
@@ -3763,7 +3766,7 @@ posix_openpty(PyObject *self, PyObject *noargs)
 #ifdef HAVE_OPENPTY
     if (openpty(&master_fd, &slave_fd, NULL, NULL, NULL) != 0)
         return posix_error();
-#elif defined(HAVE__GETPTY)
+#elifdef HAVE__GETPTY
     slave_name = _getpty(&master_fd, O_RDWR, 0666, 0);
     if (slave_name == NULL)
         return posix_error();
@@ -4212,7 +4215,6 @@ PyDoc_STRVAR(posix__isdir__doc__,
 static PyObject *
 posix__isdir(PyObject *self, PyObject *args)
 {
-    PyObject *opath;
     char *path;
     PyUnicodeObject *po;
     DWORD attributes;
@@ -4419,7 +4421,7 @@ posix_popen(PyObject *self, PyObject *args)
 #define POPEN_4 4
 
 static PyObject *_PyPopen(char *, int, int, int);
-static int _PyPclose(FILE *file);
+static int _PyPclose(PYFILE *file);
 
 /*
  * Internal dictionary mapping popen* file pointers to process handles,
@@ -5638,7 +5640,7 @@ static int _PyPclose(FILE *file)
     /* Close the file handle first, to ensure it can't block the
      * child from exiting if it's the last handle.
      */
-    result = fclose(file);
+    result = _fclose(file);
 #ifdef WITH_THREAD
     state = PyGILState_Ensure();
 #endif
@@ -5712,7 +5714,7 @@ posix_popen(PyObject *self, PyObject *args)
     char *name;
     char *mode = "r";
     int bufsize = -1;
-    PYFILE *fp;
+    FILE *fp;
     PyObject *f;
     if (!PyArg_ParseTuple(args, "s|si:popen", &name, &mode, &bufsize))
         return NULL;
@@ -5722,11 +5724,11 @@ posix_popen(PyObject *self, PyObject *args)
     else if (strcmp(mode, "wb") == 0 || strcmp(mode, "wt") == 0)
         mode = "w";
     Py_BEGIN_ALLOW_THREADS
-    fp = pypopen(name, mode);
+    fp = popen(name, mode);
     Py_END_ALLOW_THREADS
     if (fp == NULL)
         return posix_error();
-    f = PyFile_FromFile(fp, name, mode, pyfclose);
+    f = PyFile_FromFile(fp, name, mode, fclose);
     if (f != NULL)
         PyFile_SetBufSize(f, bufsize);
     return f;

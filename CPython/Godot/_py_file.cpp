@@ -48,8 +48,8 @@ static int _conv_perm(const String &p_path, int mode) {
     return flags;
 }
 
-static int _conv_perm(const String &p_path, const char *mode) {
-#define check(C) (strstr(mode, C)!=0)
+static int _conv_perm(const String &p_path, const String &mode) {
+#define check(C) (mode.has(C))
 	// Convert permissions
 	int flags = 0;
 	if (check("r+"))
@@ -101,7 +101,7 @@ struct PYFILE {
 		}
 		return nullptr;
 	}
-	static PYFILE *fopen(const String &p_path, const char *p_mode_flags) {
+	static PYFILE *fopen(const String &p_path, const String &p_mode_flags) {
 		if (!p_path.empty()) {
 			const String real_path = fixpath(p_path);
 			const int flags = _conv_perm(real_path, p_mode_flags);
@@ -141,10 +141,6 @@ int _gd_open(const char* name, int flags, ...) {
 		return _handles.insert(f).value;
 	}
 	return 0;
-}
-
-PYFILE *_gd_popen(const char *cmd, const char *mode) {
-	return PYFILE::fopen(cmd, mode);
 }
 
 int _gd_close(int fd) {
@@ -215,6 +211,10 @@ PYFILE *_gd_fopen(const char* name, const char *mode) {
 	return PYFILE::fopen(name, mode);
 }
 
+PYFILE *_gd_wfopen(const wchar_t *name, const wchar_t *mode) {
+	return PYFILE::fopen(String(name), String(mode));
+}
+
 PYFILE *_gd_fdopen(const int fd, const char *mode) {
 	if (fd > 0) {
 		const Id_T t = make_handle(fd);
@@ -268,7 +268,9 @@ int _gd_fstat(PYFILE *f, struct stat *buf) {
 		if (DirAccess::exists(path)) { if (buf) buf->st_mode = S_IFDIR; }
 		else if (FileAccess::exists(path)) { if (buf) buf->st_mode = S_IFREG; }
 		else return FAILURE;
+#ifdef S_IFLNK
 		if (_is_link(path)) { if (buf) buf->st_mode = S_IFLNK; }
+#endif
 		if (buf) { buf->st_ctime = buf->st_mtime = FileAccess::get_modified_time(path); }
 		return SUCCESS;
 	}
@@ -279,7 +281,9 @@ int _gd_stat(const char *path, struct stat *buf) {
 	if (DirAccess::exists(path)) { if (buf) buf->st_mode = S_IFDIR; }
 	else if (FileAccess::exists(path)) { if (buf) buf->st_mode = S_IFREG; }
 	else return FAILURE;
+#ifdef S_IFLNK
 	if (_is_link(path)) { if (buf) buf->st_mode = S_IFLNK; }
+#endif
 	if (buf) {  buf->st_ctime = buf->st_mtime = FileAccess::get_modified_time(path); }
 	return SUCCESS;
 }

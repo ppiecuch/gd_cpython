@@ -14,9 +14,13 @@
 #include <exception>
 #include <type_traits>
 
-#ifndef _NOEXCEPT
-# if __GNUC__ >= 4
+#if !defined(_NOEXCEPT)
+# if defined(_MSC_FULL_VER) && _MSC_FULL_VER >= 190023026
+#  define _NOEXCEPT noexcept
+# elif __GNUC__ >= 4
 #  define _NOEXCEPT _GLIBCXX_USE_NOEXCEPT
+# else
+#  define _NOEXCEPT
 # endif // if __GNUC__ >= 4
 #endif  // ifndef _NOEXCEPT
 

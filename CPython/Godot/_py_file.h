@@ -6,7 +6,12 @@
 #include <stdarg.h>
 #include <sys/types.h> // off_t
 
-#if defined(__GNUC__)
+#if defined(_MSC_VER)
+#include <basetsd.h> // ssize_t
+typedef SSIZE_T ssize_t;
+#endif
+
+#ifdef __GNUC__
 #define _PRINTF_FORMAT_ATTRIBUTE_2_0 __attribute__((format(printf, 2, 0)))
 #define _PRINTF_FORMAT_ATTRIBUTE_2_3 __attribute__((format(printf, 2, 3)))
 #else
@@ -20,21 +25,21 @@ extern "C" {
 
 typedef struct PYFILE PYFILE;
 
-int _gd_chdir(const char* dir);
+int _gd_chdir(const char *dir);
 char *_gd_getcwd(char *buf, int size);
 int _gd_unlink(const char* path);
 
-int _gd_open(const char* name, int flags, ...);
+int _gd_open(const char *name, int flags, ...);
 int _gd_close(int fd);
 int _gd_lseek(int fd, off_t offset, int whence);
 off_t _gd_ltell(int fd);
 ssize_t _gd_read(int fd, void* buf, size_t len);
-ssize_t _gd_write(int fd, const void* buf, size_t len);
+ssize_t _gd_write(int fd, const void *buf, size_t len);
 ssize_t _gd_filesize(int fd);
 
-PYFILE *_gd_fopen(const char* name, const char *mode);
+PYFILE *_gd_fopen(const char *name, const char *mode);
+PYFILE *_gd_wfopen(const wchar_t *name, const wchar_t *mode);
 PYFILE *_gd_fdopen(const int fd, const char *mode);
-PYFILE *_gd_popen(const char *cmd, const char *mode);
 int _gd_fstat(PYFILE *f, struct stat *buf);
 int _gd_stat(const char *path, struct stat *buf);
 int _gd_fclose(PYFILE *f);
@@ -80,7 +85,7 @@ PYFILE *_gd_stdout();
 #define pyfstat     _gd_fstat
 #define pyfopen     _gd_fopen
 #define pyfdopen    _gd_fdopen
-#define pypopen     _gd_popen
+#define pywfopen    _gd_wfopen
 #define pyfclose    _gd_fclose
 #define pyfseek     _gd_fseek
 #define pyftell     _gd_ftell

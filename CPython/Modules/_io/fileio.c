@@ -29,7 +29,9 @@
 
 #ifdef MS_WINDOWS
 /* can simulate truncate with Win32 API functions; see file_truncate */
+#ifndef HAVE_FTRUNCATE
 #define HAVE_FTRUNCATE
+#endif
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #endif

@@ -22,11 +22,6 @@
  */
 # ifdef SIO_GET_MULTICAST_FILTER
 #  include <MSTcpIP.h> /* for SIO_RCVALL */
-#  define HAVE_ADDRINFO
-#  define HAVE_SOCKADDR_STORAGE
-#  define HAVE_GETADDRINFO
-#  define HAVE_GETNAMEINFO
-#  define ENABLE_IPV6
 # else
 typedef int socklen_t;
 # endif /* IPPROTO_IPV6 */
