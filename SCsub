@@ -86,7 +86,7 @@ sources = [
 	"CPython/Parser/parsetok.c",
 	"CPython/Parser/printgrammar.c",
 	"CPython/Parser/tokenizer.c",
-	"CPython/Parser/tokenizer_pgen.c",
+#	"CPython/Parser/tokenizer_pgen.c",
 	"CPython/Objects/abstract.c",
 	"CPython/Objects/boolobject.c",
 	"CPython/Objects/bufferobject.c",
