@@ -3944,7 +3944,6 @@ socket_inet_ntoa(PyObject *self, PyObject *args)
     }
 
     memcpy(&packed_addr, packed_str, addr_len);
-
     return PyString_FromString(inet_ntoa(packed_addr));
 }
 

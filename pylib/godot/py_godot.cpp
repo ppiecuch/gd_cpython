@@ -850,7 +850,7 @@ static py::object py_eval(const char *expr, const py::object &o) {
 			res = py::eval(expr, py::globals());
 		}
 	} catch (py::error_already_set &e) {
-		std::cout << "py_eval error_already_set: " << e.waht() << std::endl;
+		std::cout << "py_eval error_already_set: " << e.what() << std::endl;
 	} catch (std::runtime_error &e) {
 		std::cout << "py_eval runtime_error: " << e.what() << std::endl;
 	} catch (...) {

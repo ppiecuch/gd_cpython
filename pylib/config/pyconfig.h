@@ -6,6 +6,23 @@
 # include <AvailabilityMacros.h>
 #endif
 
+/* Visual Studio 2005 introduces deprecation warnings for
+   "insecure" and POSIX functions. The insecure functions should
+   be replaced by *_s versions (according to Microsoft); the
+   POSIX functions by _* versions (which, according to Microsoft,
+   would be ISO C conforming). Neither renaming is feasible, so
+   we just silence the warnings. */
+
+#ifndef _CRT_SECURE_NO_DEPRECATE
+#define _CRT_SECURE_NO_DEPRECATE 1
+#endif
+#ifndef _CRT_NONSTDC_NO_DEPRECATE
+#define _CRT_NONSTDC_NO_DEPRECATE 1
+#endif
+#ifndef _WINSOCK_DEPRECATED_NO_WARNINGS
+#define _WINSOCK_DEPRECATED_NO_WARNINGS 1
+#endif
+
 #ifdef MS_WINDOWS
 #ifndef __cplusplus /* macros can cause compilation errors outside c */
 # include <stdio.h>
@@ -495,7 +512,9 @@
 #endif
 
 /* Define if you have the 'hstrerror' function. */
+#ifndef MS_WINDOWS
 #define HAVE_HSTRERROR 1
+#endif
 
 /* Define to 1 if you have the `hypot' function. */
 #define HAVE_HYPOT 1
@@ -504,6 +523,13 @@
 /* #undef HAVE_IEEEFP_H */
 
 /* Define if you have the 'inet_aton' function. */
+#ifdef MS_WINDOWS
+# if defined(_WIN32_WINNT) && _WIN32_WINNT > 0x0501
+#  define inet_aton(a,b) inet_pton(AF_INET,a,b) // for Vista or higher
+# else
+#  define inet_aton(a,b) (*a = inet_addr(a)) // for XP
+# endif
+#endif
 #define HAVE_INET_ATON 1
 
 /* Define if you have the 'inet_pton' function. */
@@ -870,7 +896,9 @@
 #define HAVE_SOCKADDR_STORAGE 1
 
 /* Define if you have the 'socketpair' function. */
+#ifndef MS_WINDOWS
 #define HAVE_SOCKETPAIR 1
+#endif
 
 /* Define to 1 if you have the <spawn.h> header file. */
 #define HAVE_SPAWN_H 1

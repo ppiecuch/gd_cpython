@@ -14,7 +14,11 @@ extern void initmath(void);
 extern void initcmath(void);
 extern void initerrno(void);
 extern void initgc(void);
+#ifdef MS_WINDOWS
+extern void initnt(void);
+#else
 extern void initposix(void);
+#endif
 extern void init_weakref(void);
 extern void init_sre(void);
 extern void init_codecs(void);
@@ -66,7 +70,11 @@ struct _inittab _PyImport_Inittab[] = {
 	{"math", initmath},
 	{"errno", initerrno},
 	{"gc", initgc},
+#ifdef MS_WINDOWS
+    {"nt", initnt}, /* Use the NT os functions, not posix */
+#else
 	{"posix", initposix},
+#endif
 	{"_weakref", init_weakref},
 	{"_sre", init_sre},
 	{"_codecs", init_codecs},
@@ -97,6 +105,18 @@ struct _inittab _PyImport_Inittab[] = {
 	{"strop", initstrop},
 
 #if 0
+#ifdef MS_WINDOWS
+#ifndef MS_WINI64
+    {"audioop", initaudioop},
+#endif
+#endif
+#ifndef MS_WINI64
+    {"imageop", initimageop},
+#endif
+#ifdef WIN32
+    {"msvcrt", initmsvcrt},
+    {"_locale", init_locale},
+#endif
 	{"_ast", init_ast},
 	{"future_builtins", initfuture_builtins},
 	{"_subprocess", init_subprocess},
