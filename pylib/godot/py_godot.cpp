@@ -7,6 +7,8 @@
 
 #include "core/rid.h"
 #include "core/variant.h"
+#include "core/version_generated.gen.h"
+#include "core/version_hash.gen.h"
 #include "core/math/geometry.h"
 #include "servers/visual_server.h"
 
@@ -42,6 +44,21 @@ static py::object py_eval(const char *expr, const py::object &o);
 static py::object py_call(py::object p_obj, String p_func_name, py::args p_args = py::args());
 static py::object py_call(String p_func_name, py::args p_args = py::args(), String p_module = "__main__");
 
+static std::map<std::tuple<std::string, int, int, int>, Ref<Font>> _font_cache;
+static Ref<DynamicFontData> _default_font_data;
+
+static String get_full_version_string() {
+	static String _version;
+	if (_version.empty()) {
+		String hash = String(VERSION_HASH);
+		if (hash.length() != 0) {
+			hash = "." + hash.left(9);
+		}
+		_version = String(VERSION_NAME) + " v" + String(VERSION_FULL_BUILD) + hash + " - " + String(VERSION_WEBSITE);
+	}
+	return _version;
+}
+
 struct _attr_visibility_hidden PyGodotInstance::InstancePrivateData {
 	py::object py_app;
 };
@@ -58,12 +75,21 @@ PyGodotInstance::~PyGodotInstance() {
 bool PyGodotInstance::process_events(const Ref<InputEvent> &p_event, const String &p_event_func) {
 	if (!_p->py_app.is_none()) {
 		if (const InputEventMouseMotion *m = Object::cast_to<InputEventMouseMotion>(*p_event)) {
-			GdEvent ev{GdEvent::MOUSEMOTION, m->get_position()};
+			GdEvent ev{GdEvent::MOUSEMOTION};
+			ev.position = m->get_position();
 			py_call(_p->py_app, p_event_func, py::make_tuple(ev));
 			return true;
 		}
 		if (const InputEventMouseButton *mb = Object::cast_to<InputEventMouseButton>(*p_event)) {
-			GdEvent ev{mb->is_pressed() ? GdEvent::MOUSEBUTTONDOWN : GdEvent::MOUSEBUTTONUP, mb->get_position(), mb->get_button_index()};
+			GdEvent ev{mb->is_pressed() ? GdEvent::MOUSEBUTTONDOWN : GdEvent::MOUSEBUTTONUP};
+			ev.position = mb->get_position();
+			ev.button = mb->get_button_index();
+			py_call(_p->py_app, p_event_func, py::make_tuple(ev));
+			return true;
+		}
+		if (const InputEventKey *mk = Object::cast_to<InputEventKey>(*p_event)) {
+			GdEvent ev{mk->is_pressed() ? GdEvent::KEYDOWN : GdEvent::KEYUP};
+			ev.key = mk->get_scancode();
 			py_call(_p->py_app, p_event_func, py::make_tuple(ev));
 			return true;
 		}
@@ -71,7 +97,7 @@ bool PyGodotInstance::process_events(const Ref<InputEvent> &p_event, const Strin
 	return false;
 }
 
-Variant PyGodotInstance::call(const String &p_func, real_t p_arg) {
+Variant PyGodotInstance::pycall(const String &p_func, real_t p_arg) {
 	if (!_p->py_app.is_none()) {
 		auto r = py_call(_p->py_app, p_func, py::make_tuple(p_arg));
 		if (!r.is_none()) {
@@ -93,7 +119,7 @@ Variant PyGodotInstance::call(const String &p_func, real_t p_arg) {
 	return Variant();
 }
 
-Variant PyGodotInstance::call(const String &p_func) {
+Variant PyGodotInstance::pycall(const String &p_func) {
 	if (!_p->py_app.is_none()) {
 		auto r = py_call(_p->py_app, p_func);
 		if (!r.is_none()) {
@@ -120,24 +146,32 @@ bool PyGodotInstance::build_pygodot(int p_instance_id, const String &p_build_fun
 	return (!_p->py_app.is_none());
 }
 
+void PyGodotInstance::destroy_pygodot() {
+	if (!_p->py_app.is_none()) {
+		_p->py_app = py::none();
+		py::module_::import("gc").attr("collect")();
+		// clear global data:
+		_font_cache.clear();
+		_default_font_data = Ref<DynamicFontData>(nullptr);
+		py::print("*** Application is closing.");
+	}
+}
+
 
 // BEGIN Godot/Python wrapper objects
 
-static std::map<std::tuple<std::string, int, int, int>, Ref<Font>> _font_cache;
-
 #ifdef MODULE_FREETYPE_ENABLED
 static Ref<Font> _get_default_dynamic_font(int size, int stretch = 0, int outline = 0) {
-	static Ref<DynamicFontData> dfont;
 	std::tuple<std::string, int, int, int> key = std::make_tuple("__default__", size, stretch, outline);
 	if (_font_cache.count(key)) {
 		return _font_cache[key];
 	}
-	if (dfont.is_null()) {
-		dfont.instance();
-		dfont->set_font_ptr(_default_ttf, _default_ttf_size);
+	if (_default_font_data.is_null()) {
+		_default_font_data.instance();
+		_default_font_data->set_font_ptr(_default_ttf, _default_ttf_size);
 	}
 	Ref<DynamicFont> font = memnew(DynamicFont);
-	font->set_font_data(dfont);
+	font->set_font_data(_default_font_data);
 	font->set_size(size);
 	if (stretch > 0 && stretch < 100) {
 		font->set_stretch_scale(stretch);
@@ -305,6 +339,7 @@ void GdFont::load(const std::string &path, int size, int stretch) {
 //     +-Vector3
 //     +-Rect2
 //     +-Rect2i
+//  +--info
 //  +--utils
 //  +--math
 //  +--locals
@@ -420,6 +455,7 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def_readwrite("width", &Vector2::x)
 		.def_readwrite("height", &Vector2::y)
 		.def("length", &Vector2::length)
+		.def("length_squared", &Vector2::length_squared)
 		.def(py::self + py::self)
 		.def(py::self += py::self)
 		.def(py::self *= real_t())
@@ -444,6 +480,8 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def(py::self - py::self)
 		.def(py::self * int())
 		.def(py::self / int())
+		.def(py::self == py::self)
+		.def(py::self != py::self)
 		.def(-py::self)
 		.def("get_tuple", [](const Vector2i &v) { return std::make_tuple(v.x, v.y); })
 		.def("__copy__", [](const Vector2i &v){ return Vector2i(v); })
@@ -456,13 +494,16 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def_readwrite("y", &Vector3::y)
 		.def_readwrite("z", &Vector3::z)
 		.def("length", &Vector3::length)
+		.def("length_squared", &Vector3::length_squared)
 		.def(py::self + py::self)
 		.def(py::self += py::self)
 		.def(py::self *= real_t())
 		.def(py::self - py::self)
 		.def(py::self * real_t())
 		.def(py::self / real_t())
-		.def(-py::self)
+		.def(py::self == py::self)
+		.def(py::self != py::self)
+	.def(-py::self)
 		.def("get_tuple", [](const Vector3 &v) { return std::make_tuple(v.x, v.y, v.z);})
 		.def("__copy__", [](const Vector3 &v){ return Vector3(v); })
 		.def("__repr__", [](const Vector3 &v) { return std::str(v);})
@@ -582,10 +623,9 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def_static("named", &Color::html)
 		.def("to_html", &Color::to_html)
 		.def("from_hsv", &Color::from_hsv)
-		.def("from_hsv", &Color::from_hsv)
-		.def_static("from_abgr", &Color::html)
-		.def_static("from_rgbe9995", &Color::html)
-		.def_static("solid", &Color::html)
+		.def_static("from_abgr", &Color::from_abgr)
+		.def_static("from_rgbe9995", &Color::from_rgbe9995)
+		.def_static("solid", &Color::solid)
 		.def(py::self + py::self)
 		.def(py::self * py::self)
 		.def(py::self < py::self)
@@ -602,18 +642,26 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def("get_height", &GdSurface::get_height)
 		.def("get_size", &GdSurface::get_size)
 		.def("fill", &GdSurface::fill)
-		.def("blit", &GdSurface::blit)
-		.def("blit", &GdSurface::blit_area)
-		.def("blit", &GdSurface::blit_or_area)
+		.def("blit", overload_cast_<GdSurface&, const std::vector<real_t>&, const std::vector<real_t>&>()(&GdSurface::blit))
+		.def("blit", overload_cast_<GdSurface&, const std::vector<real_t>&>()(&GdSurface::blit))
+		.def("blit", overload_cast_<GdSurface&, const std::vector<real_t>&, const Rect2&>()(&GdSurface::blit))
 		.def("__repr__", [](const GdSurface &s) {
 			switch(s.impl->get_surface_type()) {
 				case GdSurfaceImpl::DISPLAY_SURFACE: return std::str(vformat("GdSurface 0x%0x {DISPLAY_SURFACE}", int64_t(&s)));
-				case GdSurfaceImpl::COLOR_SURFACE: return std::str(vformat("GdSurface 0x%0x {COLOR_SURFACE, %s}", int64_t(&s), s.get_as_color()->surf_color));
+				case GdSurfaceImpl::COLOR_SURFACE: return std::str(vformat("GdSurface 0x%0x {COLOR_SURFACE, %s}", int64_t(&s), *s.get_as_color()->surf_color));
 				case GdSurfaceImpl::TEXT_SURFACE: return std::str(vformat("GdSurface 0x%0x {TEXT_SURFACE, '%s'}", int64_t(&s), s.get_as_text()->text));
 				case GdSurfaceImpl::TEXTURE_SURFACE: return std::str(vformat("GdSurface 0x%0x {TEXTURE_SURFACE}", int64_t(&s)));
 			}
 		})
 		.attr("__version__") = VERSION_FULL_CONFIG;
+	// gdgame.info
+	py::module m_info = m.def_submodule("info", "System and build info.");
+#ifdef DEBUG_ENABLED
+	m_info.attr("DEBUG") = true;
+#else
+	m_info.attr("DEBUG") = false;
+#endif
+	m_info.attr("GODOT") = std::string(get_full_version_string().utf8().c_str());
 	// gdgame.locals
 	py::module m_locals = m.def_submodule("locals", "Module contains various constants used by gdgame.");
 	m_locals.attr("K_SPACE") = py::int_(int(KEY_SPACE));
@@ -815,8 +863,8 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 	// gdgame.draw
 	py::module m_draw = m.def_submodule("draw", "gdgame module for drawing shapes.");
 	m_draw.def("rect", overload_cast_<const GdSurface&, const Color&, const Rect2&, int>()(&draw::rect));
-	m_draw.def("rect", overload_cast_<const GdSurface&, const std::vector<float>&, const std::vector<float>&, int>()(&draw::rect));
-	m_draw.def("rect", overload_cast_<const GdSurface&, const std::vector<float>&, const Rect2&, int>()(&draw::rect));
+	m_draw.def("rect", overload_cast_<const GdSurface&, const std::vector<uint8_t>&, const std::vector<float>&, int>()(&draw::rect));
+	m_draw.def("rect", overload_cast_<const GdSurface&, const std::vector<uint8_t>&, const Rect2&, int>()(&draw::rect));
 	m_draw.def("rect", overload_cast_<const GdSurface&, int, const Rect2&, int>()(&draw::rect));
 	// gdgame.image
 	py::module m_image = m.def_submodule("image", "gdgame module for image transfer.");
@@ -829,7 +877,7 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def("get_height", &GdFont::get_height)
 		.def("size", &GdFont::size)
 		.def("render", overload_cast_<const std::string&, bool, int>()(&GdFont::render))
-		.def("render", overload_cast_<const std::string&, bool, const std::vector<float>&>()(&GdFont::render))
+		.def("render", overload_cast_<const std::string&, bool, const std::vector<uint8_t>&>()(&GdFont::render))
 		.attr("__version__") = VERSION_FULL_CONFIG;
 	m_font.def("init", []() { });
 	m_font.def("quit", []() { });

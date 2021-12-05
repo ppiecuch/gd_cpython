@@ -6,19 +6,24 @@
 #include "scene/2d/node_2d.h"
 #include "common/gd_core.h"
 
-#include <memory>
+#include "pylib/godot/py_godot.h"
 
-class CPythonRun {
+class CPythonEngine : public Object {
+	GDCLASS(CPythonEngine, Object);
+
 	String exec_file;
-	Node2D *owner;
+
+	static CPythonEngine *instance;
 
 public:
+	static CPythonEngine *get_singleton();
+
 	bool has_error();
 	void run_file(const String& p_python_file);
 	void run_code(const String& p_python_code);
 
-	CPythonRun(Node2D *p_owner);
-	~CPythonRun();
+	CPythonEngine();
+	~CPythonEngine();
 };
 
 struct PyGodotInstance;
@@ -34,8 +39,8 @@ class CPythonInstance : public Node2D {
 	int debug_level;
 	int verboe_level;
 
-	std::gd_unique_ptr<PyGodotInstance> _py;
-	std::gd_unique_ptr<CPythonRun> _cpython;
+	PyGodotInstance _py;
+
 	bool _running, _pausing;
 	String _last_file_run;
 	String _last_code_run;

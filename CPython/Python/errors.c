@@ -36,17 +36,19 @@ PyErr_Restore(PyObject *type, PyObject *value, PyObject *traceback)
 
     /* Save these in locals to safeguard against recursive
        invocation through Py_XDECREF */
-    oldtype = tstate->curexc_type;
-    oldvalue = tstate->curexc_value;
-    oldtraceback = tstate->curexc_traceback;
+    if (tstate) {
+        oldtype = tstate->curexc_type;
+        oldvalue = tstate->curexc_value;
+        oldtraceback = tstate->curexc_traceback;
 
-    tstate->curexc_type = type;
-    tstate->curexc_value = value;
-    tstate->curexc_traceback = traceback;
+        tstate->curexc_type = type;
+        tstate->curexc_value = value;
+        tstate->curexc_traceback = traceback;
 
-    Py_XDECREF(oldtype);
-    Py_XDECREF(oldvalue);
-    Py_XDECREF(oldtraceback);
+        Py_XDECREF(oldtype);
+        Py_XDECREF(oldvalue);
+        Py_XDECREF(oldtraceback);
+    }
 }
 
 void
@@ -248,13 +250,19 @@ PyErr_Fetch(PyObject **p_type, PyObject **p_value, PyObject **p_traceback)
 {
     PyThreadState *tstate = PyThreadState_GET();
 
-    *p_type = tstate->curexc_type;
-    *p_value = tstate->curexc_value;
-    *p_traceback = tstate->curexc_traceback;
+    if (tstate) {
+        *p_type = tstate->curexc_type;
+        *p_value = tstate->curexc_value;
+        *p_traceback = tstate->curexc_traceback;
 
-    tstate->curexc_type = NULL;
-    tstate->curexc_value = NULL;
-    tstate->curexc_traceback = NULL;
+        tstate->curexc_type = NULL;
+        tstate->curexc_value = NULL;
+        tstate->curexc_traceback = NULL;
+    } else {
+        *p_type = NULL;
+        *p_value = NULL;
+        *p_traceback = NULL;
+    }
 }
 
 void

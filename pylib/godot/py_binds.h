@@ -59,6 +59,15 @@ namespace std {
 	template<typename FromType> std::string str(const FromType& e) { return std::string(String(e).utf8().get_data()); }
 }
 
+static _FORCE_INLINE_ Color vec_to_color(const std::vector<uint8_t> &vec) {
+	switch(vec.size()) {
+		case 1: return Color::solid(vec[0] / 255.0);
+		case 3: return Color(vec[0] / 255.0, vec[1] / 255.0, vec[2] / 255.0);
+		case 4: return Color(vec[0] / 255.0, vec[1] / 255.0, vec[2] / 255.0, vec[3] / 255.0);
+	}
+	return Color();
+}
+
 static _FORCE_INLINE_ Color vec_to_color(const std::vector<float> &vec) {
 	switch(vec.size()) {
 		case 1: return Color::solid(vec[0]);
@@ -66,7 +75,7 @@ static _FORCE_INLINE_ Color vec_to_color(const std::vector<float> &vec) {
 		case 4: return Color(vec[0], vec[1], vec[2], vec[3]);
 	}
 	return Color();
-};
+}
 
 // Deferred rendering commands
 struct RenderLaterCmd {
@@ -118,15 +127,16 @@ struct GdSurfaceImpl {
 
 struct GdColorSurface : public GdSurfaceImpl {
 	int surf_width, surf_height;
-	Color surf_color;
+	std::unique_ptr<Color> surf_color; // no drawing if null
 
 	_FORCE_INLINE_ Type get_surface_type() const { return COLOR_SURFACE; }
 	_FORCE_INLINE_ int get_width() const { return surf_width; }
 	_FORCE_INLINE_ int get_height() const { return surf_height; }
 
-	_FORCE_INLINE_ std::unique_ptr<GdSurfaceImpl> clone() const { return std::make_unique<GdColorSurface>(surf_width, surf_height, surf_color); }
+	_FORCE_INLINE_ std::unique_ptr<GdSurfaceImpl> clone() const { return std::make_unique<GdColorSurface>(surf_width, surf_height, *surf_color); }
 
-	GdColorSurface(int width, int height, const Color &color = Color()) : surf_width(width), surf_height(height), surf_color(color) { }
+	GdColorSurface(int width, int height) : surf_width(width), surf_height(height) { }
+	GdColorSurface(int width, int height, const Color &color) : surf_width(width), surf_height(height), surf_color(std::make_unique<Color>(color)) { }
 };
 
 struct GdTextSurface : public GdSurfaceImpl {
@@ -268,7 +278,7 @@ struct GdSurface {
 	_FORCE_INLINE_ GdTextureSurface *get_as_texture() const { return (GdTextureSurface*)impl.get(); }
 	_FORCE_INLINE_ GdTextSurface *get_as_text() const { return (GdTextSurface*)impl.get(); }
 
-	GdSurface(const GdSurface &surf) :  impl(surf.impl->clone()) { }
+	GdSurface(const GdSurface &surf) :  impl(surf.impl->clone()), _render_later(surf._render_later) { }
 	GdSurface(int surf_width, int surf_height) : impl(std::make_unique<GdColorSurface>(surf_width, surf_height)) { }
 	GdSurface(const std::vector<real_t> surf_size) : impl(std::make_unique<GdColorSurface>(surf_size[0], surf_size[1])) { }
 	GdSurface(const Ref<Font> &font, const String &text, const Color &color) : impl(std::make_unique<GdTextSurface>(font, text, color)) { }
@@ -279,9 +289,21 @@ struct GdSurface {
 	_FORCE_INLINE_ int get_height() const { ERR_FAIL_NULL_V(impl, 1); return impl->get_height(); }
 	_FORCE_INLINE_ Size2 get_size() const { return Size2(get_width(), get_height()); }
 
-	void fill(const std::vector<float> &color) { }
+	void fill(const std::vector<uint8_t> &color) {
+		if (impl->get_surface_type() == GdSurfaceImpl::COLOR_SURFACE) {
+			get_as_color()->surf_color = std::make_unique<Color>(vec_to_color(color));
+		}
+	}
 
-	_FORCE_INLINE_ void blit(const GdSurface &source, const std::vector<real_t> &dest) {
+	_FORCE_INLINE_ void blit(GdSurface &source, const std::vector<real_t> &dest, const std::vector<real_t> &area) {
+		ERR_FAIL_COND(area.size() != 0 && area.size() != 4);
+		switch (area.size()) {
+			case 0: blit(source, dest); return;
+			case 4: blit(source, dest, Rect2(area[0], area[1], area[2], area[3])); return;
+		}
+	}
+
+	_FORCE_INLINE_ void blit(GdSurface &source, const std::vector<real_t> &dest) {
 		ERR_FAIL_NULL(impl);
 		ERR_FAIL_NULL(source.impl);
 		ERR_FAIL_COND(dest.size() != 2 && dest.size() != 4);
@@ -292,9 +314,13 @@ struct GdSurface {
 						WARN_PRINT("Not supported");
 					} break;
 					case GdSurfaceImpl::COLOR_SURFACE: {
-						if (dest.size() == 4) {
-							GdColorSurface *surf = source.get_as_color();
-							_render_later.push_back(RenderLaterCmd(Rect2(dest[0], dest[1], dest[2], dest[3]), surf->surf_color));
+						GdColorSurface *surf = source.get_as_color();
+						if (surf->surf_color) {
+							switch (dest.size()) {
+								case 2: _render_later.push_back(RenderLaterCmd(
+									Rect2(Point2(dest[0], dest[1]), Size2(surf->get_width(), surf->get_height())), *surf->surf_color)); break;
+								case 4: _render_later.push_back(RenderLaterCmd(Rect2(dest[0], dest[1], dest[2], dest[3]), *surf->surf_color)); break;
+							}
 						}
 					} break;
 					case GdSurfaceImpl::TEXT_SURFACE: {
@@ -311,6 +337,18 @@ struct GdSurface {
 				}
 			} break;
 			case GdSurfaceImpl::COLOR_SURFACE: {
+				switch(source.impl->get_surface_type()) {
+					case GdSurfaceImpl::TEXTURE_SURFACE: {
+						GdTextureSurface *surf = source.get_as_texture();
+						switch (dest.size()) {
+							case 2: _render_later.push_back(RenderLaterCmd(surf->texture, Point2(dest[0], dest[1]))); break;
+							case 4: _render_later.push_back(RenderLaterCmd(surf->texture, Rect2(dest[0], dest[1], dest[2], dest[3]))); break;
+						}
+					} break;
+					default: {
+						WARN_PRINT("Not supported");
+					} break;
+				}
 			} break;
 			case GdSurfaceImpl::TEXT_SURFACE: {
 			} break;
@@ -322,7 +360,9 @@ struct GdSurface {
 					case GdSurfaceImpl::COLOR_SURFACE: {
 						if (dest.size() == 4) {
 							GdColorSurface *surf = source.get_as_color();
-							disp->render_rect(Rect2(dest[0], dest[1], dest[2], dest[3]), surf->surf_color);
+							if (surf->surf_color) {
+								disp->render_rect(Rect2(dest[0], dest[1], dest[2], dest[3]), *surf->surf_color);
+							}
 						}
 					} break;
 					case GdSurfaceImpl::TEXT_SURFACE: {
@@ -337,19 +377,14 @@ struct GdSurface {
 						}
 					} break;
 				}
+				if (source._render_later.size()) {
+					disp->render_queue(source._render_later);
+				}
 			} break;
 		}
 	}
 
-	_FORCE_INLINE_ void blit_or_area(const GdSurface &source, const std::vector<real_t> &dest, const std::vector<real_t> &area) {
-		ERR_FAIL_COND(area.size() != 0 && area.size() != 4);
-		switch (area.size()) {
-			case 0: blit(source, dest); return;
-			case 4: blit_area(source, dest, Rect2(area[0], area[1], area[2], area[3])); return;
-		}
-	}
-
-	_FORCE_INLINE_ void blit_area(const GdSurface &source, const std::vector<real_t> &dest, const Rect2 &area) {
+	_FORCE_INLINE_ void blit(GdSurface &source, const std::vector<real_t> &dest, const Rect2 &area) {
 		ERR_FAIL_NULL(impl);
 		ERR_FAIL_NULL(source.impl);
 		ERR_FAIL_COND(dest.size() != 2 && dest.size() != 4);
@@ -357,14 +392,19 @@ struct GdSurface {
 			case GdSurfaceImpl::TEXTURE_SURFACE: {
 				switch(source.impl->get_surface_type()) {
 					case GdSurfaceImpl::TEXTURE_SURFACE: {
-						GdTextureSurface *surf = (GdTextureSurface*)source.impl.get();
+						GdTextureSurface *surf = source.get_as_texture();
 						switch (dest.size()) {
-							case 2: {
-								_render_later.push_back(RenderLaterCmd(surf->texture, Point2(dest[0], dest[1]), area));
-							} break;
-							case 4: {
-								_render_later.push_back(RenderLaterCmd(surf->texture, Rect2(dest[0], dest[1], dest[2], dest[3]), area));
-							} break;
+							case 2: _render_later.push_back(RenderLaterCmd(surf->texture, Point2(dest[0], dest[1]), area)); break;
+							case 4: _render_later.push_back(RenderLaterCmd(surf->texture, Rect2(dest[0], dest[1], dest[2], dest[3]), area)); break;
+						}
+					} break;
+					case GdSurfaceImpl::COLOR_SURFACE: {
+						GdColorSurface *surf = source.get_as_color();
+						if (surf->surf_color) {
+							switch (dest.size()) {
+								case 2: _render_later.push_back(RenderLaterCmd(area, *surf->surf_color)); break;
+								case 4: _render_later.push_back(RenderLaterCmd(area, *surf->surf_color)); break;
+							}
 						}
 					} break;
 					default: {
@@ -373,11 +413,23 @@ struct GdSurface {
 				}
 			} break;
 			case GdSurfaceImpl::COLOR_SURFACE: {
+				switch(source.impl->get_surface_type()) {
+					case GdSurfaceImpl::TEXTURE_SURFACE: {
+						GdTextureSurface *surf = source.get_as_texture();
+						switch (dest.size()) {
+							case 2: _render_later.push_back(RenderLaterCmd(surf->texture, Point2(dest[0], dest[1]), area)); break;
+							case 4: _render_later.push_back(RenderLaterCmd(surf->texture, Rect2(dest[0], dest[1], dest[2], dest[3]), area)); break;
+						}
+					} break;
+					default: {
+						WARN_PRINT("Not supported");
+					} break;
+				}
 			} break;
 			case GdSurfaceImpl::TEXT_SURFACE: {
 			} break;
 			case GdSurfaceImpl::DISPLAY_SURFACE: {
-				GdDisplaySurface *disp = (GdDisplaySurface*)impl.get();
+				GdDisplaySurface *disp = get_as_display();
 				switch(source.impl->get_surface_type()) {
 					case GdSurfaceImpl::DISPLAY_SURFACE: {
 						WARN_PRINT("Not supported");
@@ -389,19 +441,15 @@ struct GdSurface {
 						WARN_PRINT("Not supported");
 					} break;
 					case GdSurfaceImpl::TEXTURE_SURFACE: {
-						GdTextureSurface *surf = (GdTextureSurface*)source.impl.get();
+						GdTextureSurface *surf = source.get_as_texture();
 						switch (dest.size()) {
-							case 2: {
-								disp->blit_texture(surf->texture, Point2(dest[0], dest[1]), area);
-							} break;
-							case 4: {
-								disp->blit_texture(surf->texture, Rect2(dest[0], dest[1], dest[2], dest[3]), area);
-							}
-						}
-						if (source._render_later.size()) {
-							disp->render_queue(source._render_later);
+							case 2: disp->blit_texture(surf->texture, Point2(dest[0], dest[1]), area); break;
+							case 4: disp->blit_texture(surf->texture, Rect2(dest[0], dest[1], dest[2], dest[3]), area); break;
 						}
 					} break;
+				}
+				if (source._render_later.size()) {
+					disp->render_queue(source._render_later);
 				}
 			} break;
 		}
@@ -426,7 +474,7 @@ struct GdFont {
 		return GdSurface(font, String(text.c_str()), Color::hex(color));
 	}
 
-	_FORCE_INLINE_ GdSurface render(const std::string &text, bool alias, const std::vector<float> &color) {
+	_FORCE_INLINE_ GdSurface render(const std::string &text, bool alias, const std::vector<uint8_t> &color) {
 		return GdSurface(font, String(text.c_str()), vec_to_color(color));
 	}
 
@@ -447,8 +495,15 @@ struct GdEvent {
 		JOYBUTTONUP,
 	};
 	int type;
-	Point2 position;
-	int button;
+	union {
+		struct {
+			Point2 position;
+			int button;
+		};
+		struct {
+			int key;
+		};
+	};
 };
 
 // Wrapper around Godot sound
@@ -497,10 +552,10 @@ namespace draw {
 			WARN_PRINT("Not an Node2D");
 		}
 	}
-	_FORCE_INLINE_ void rect(const GdSurface &surf, const std::vector<float> &c, const Rect2 &geom, int width) {
+	_FORCE_INLINE_ void rect(const GdSurface &surf, const std::vector<uint8_t> &c, const Rect2 &geom, int width) {
 		rect(surf, vec_to_color(c), geom, width);
 	}
-	_FORCE_INLINE_ void rect(const GdSurface &surf, const std::vector<float> &c, const std::vector<float> &geom, int width) {
+	_FORCE_INLINE_ void rect(const GdSurface &surf, const std::vector<uint8_t> &c, const std::vector<float> &geom, int width) {
 		rect(surf, vec_to_color(c), Rect2(geom[0], geom[1], geom[2], geom[3]), width);
 	}
 	_FORCE_INLINE_ void rect(const GdSurface &surf, int c, const Rect2 &geom, int width) {

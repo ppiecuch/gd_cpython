@@ -425,7 +425,7 @@ complex_format(PyComplexObject *v, int precision, char format_code)
 }
 
 static int
-complex_print(PyComplexObject *v, FILE *fp, int flags)
+complex_print(PyComplexObject *v, PYFILE *fp, int flags)
 {
     PyObject *formatv;
     char *buf;
@@ -437,7 +437,7 @@ complex_print(PyComplexObject *v, FILE *fp, int flags)
         return -1;
     buf = PyString_AS_STRING(formatv);
     Py_BEGIN_ALLOW_THREADS
-    fputs(buf, fp);
+    pyfputs(buf, fp);
     Py_END_ALLOW_THREADS
     Py_DECREF(formatv);
     return 0;

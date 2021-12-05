@@ -25,33 +25,43 @@ constexpr const char *__draw_func = "gd_draw";
 constexpr const char *__event_func = "gd_event";
 constexpr const char *__term_func = "gd_term";
 
-CPythonRun::CPythonRun(Node2D *p_owner) {
+CPythonEngine *CPythonEngine::instance = nullptr;
+
+CPythonEngine *CPythonEngine::get_singleton() {
 	static char exec_name[] = "pygodot";
 	static char pythoncaseok[] = "PYTHONCASEOK";
 	static char vhome[] = "VHOME=user://";
 
-	owner = p_owner;
-	Py_SetProgramName(exec_name);
+	if (!Py_IsInitialized()) {
+		Py_SetProgramName(exec_name);
 
-	Py_NoSiteFlag = 1;
+		Py_NoSiteFlag = 1;
 
-	__putenv(pythoncaseok);
-	__putenv(vhome);
+		__putenv(pythoncaseok);
+		__putenv(vhome);
 
-	Py_InitializeEx(0);
+		Py_InitializeEx(0);
 
-	char* n_argv[] = { exec_name };
-	PySys_SetArgv(1, n_argv);
+		char* n_argv[] = { exec_name };
+		PySys_SetArgv(1, n_argv);
 
-	print_line(vformat("Python interpreter version: %s on %s", Py_GetVersion(), Py_GetPlatform()));
-	print_line(vformat("Python standard library path: %s", Py_GetPath()));
+		print_line(vformat("Python interpreter version: %s on %s", Py_GetVersion(), Py_GetPlatform()));
+		print_line(vformat("Python standard library path: %s", Py_GetPath()));
+	}
+
+	return instance;
 }
 
-CPythonRun::~CPythonRun() {
+CPythonEngine::CPythonEngine() {
+	instance = this;
+}
+
+CPythonEngine::~CPythonEngine() {
 	Py_Finalize();
+	instance = nullptr;
 }
 
-void CPythonRun::run_code(const String& p_python_code) {
+void CPythonEngine::run_code(const String& p_python_code) {
 	if (!p_python_code.empty()) {
 		const char *code = p_python_code.utf8().get_data();
 		if (PyRun_SimpleString(code) == -1) {
@@ -60,7 +70,7 @@ void CPythonRun::run_code(const String& p_python_code) {
 	}
 }
 
-void CPythonRun::run_file(const String& p_python_file) {
+void CPythonEngine::run_file(const String& p_python_file) {
 	if (!p_python_file.empty()) {
 		const std::string file(p_python_file.utf8().get_data());
 		PYFILE *fp = pyfopen(file.c_str(), "r");
@@ -129,7 +139,7 @@ void CPythonInstance::_input(const Ref<InputEvent> &p_event) {
 	ERR_FAIL_COND(!is_visible_in_tree());
 
 	if (_running) {
-		if (_py->process_events(p_event, __event_func)) {
+		if (_py.process_events(p_event, __event_func)) {
 			return;
 		}
 	}
@@ -149,13 +159,14 @@ void CPythonInstance::_notification(int p_what) {
 			set_process(false);
 			set_process_input(false);
 			if (_running) {
-				_py->call(__term_func);
+				_py.pycall(__term_func);
 				_running = false;
+				_py.destroy_pygodot();
 			}
 		} break;
 		case NOTIFICATION_DRAW: {
 			if (_running) {
-				_py->call(__draw_func); // call draw function
+				_py.pycall(__draw_func); // call draw function
 			} else {
 				// not active indicator
 				draw_rect(Rect2(Point2(), view_size), white, false);
@@ -170,9 +181,6 @@ void CPythonInstance::_notification(int p_what) {
 			}
 		} break;
 		case NOTIFICATION_READY: {
-			if (!_cpython) {
-				_cpython = std::make_gd_unique_ptr(memnew(CPythonRun(this)));
-			}
 			if (!Engine::get_singleton()->is_editor_hint()) {
 				if (python_autorun) {
 					run();
@@ -182,7 +190,7 @@ void CPythonInstance::_notification(int p_what) {
 		case NOTIFICATION_PROCESS: {
 			if (_running && !_pausing) {
 				const real_t delta = get_process_delta_time();
-				if (_py->call(__tick_func, delta)) { // call tick function
+				if (_py.pycall(__tick_func, delta)) { // call tick function
 					update();
 				}
 			}
@@ -254,21 +262,25 @@ int CPythonInstance::get_verbose_level() const {
 }
 
 bool CPythonInstance::run() {
+	CPythonEngine *cpython = CPythonEngine::get_singleton();
+
+	ERR_FAIL_NULL_V(cpython, false);
+
 	if (!python_file.empty() && _last_file_run != python_file) {
-		_cpython->run_file(python_file);
+		cpython->run_file(python_file);
 		_last_file_run = python_file;
 		_running = !py_has_error();
 	}
 	if (!python_code.empty() && _last_code_run != python_code.md5_text()) {
-		_cpython->run_code(python_code);
+		cpython->run_code(python_code);
 		_last_code_run = python_code.md5_text();
 		_running = !py_has_error();
 	}
 	if (_running) {
 		if (!python_gd_build_func.empty()) {
-			_py->build_pygodot(get_instance_id(), python_gd_build_func);
+			_py.build_pygodot(get_instance_id(), python_gd_build_func);
 		}
-		auto r = _py->call(__init_func); // call init functions
+		auto r = _py.pycall(__init_func); // call init functions
 		#ifdef DEBUG_ENABLED
 		if (!r.is_nil()) {
 			print_verbose(vformat("Return value from %s: %s", __init_func, r));
@@ -309,7 +321,7 @@ void CPythonInstance::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("python_code_changed"));
 }
 
-CPythonInstance::CPythonInstance() : _py(std::make_gd_unique_ptr(memnew(PyGodotInstance))) {
+CPythonInstance::CPythonInstance() {
 	_running = false;
 	_pausing = false;
 	_dirty = false;

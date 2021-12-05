@@ -5,10 +5,10 @@
 /* We need to define bool_print to override int_print */
 
 static int
-bool_print(PyBoolObject *self, FILE *fp, int flags)
+bool_print(PyBoolObject *self, PYFILE *fp, int flags)
 {
     Py_BEGIN_ALLOW_THREADS
-    fputs(self->ob_ival == 0 ? "False" : "True", fp);
+    pyfputs(self->ob_ival == 0 ? "False" : "True", fp);
     Py_END_ALLOW_THREADS
     return 0;
 }
