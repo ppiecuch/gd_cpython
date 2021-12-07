@@ -1,5 +1,6 @@
+
 def can_build(env, platform):
-    return not env["disable_experimental"]
+    return env["tools"] and not env["production"] # for testing only
 
 
 def configure(env):
