@@ -50,6 +50,7 @@ namespace {
 			Ref<ImageTexture> texture = memnew(ImageTexture);
 			texture->create_from_image(image);
 			_dot_cursor_texture = texture;
+			_register_global_ref(_dot_cursor_texture); // remove at exit
 		}
 		return _dot_cursor_texture;
 	}
@@ -502,6 +503,7 @@ struct GdEvent {
 		};
 		struct {
 			int key;
+			int unicode;
 		};
 	};
 };

@@ -45,7 +45,6 @@ static py::object py_call(py::object p_obj, String p_func_name, py::args p_args 
 static py::object py_call(String p_func_name, py::args p_args = py::args(), String p_module = "__main__");
 
 static std::map<std::tuple<std::string, int, int, int>, Ref<Font>> _font_cache;
-static Ref<DynamicFontData> _default_font_data;
 
 static String get_full_version_string() {
 	static String _version;
@@ -90,6 +89,7 @@ bool PyGodotInstance::process_events(const Ref<InputEvent> &p_event, const Strin
 		if (const InputEventKey *mk = Object::cast_to<InputEventKey>(*p_event)) {
 			GdEvent ev{mk->is_pressed() ? GdEvent::KEYDOWN : GdEvent::KEYUP};
 			ev.key = mk->get_scancode();
+			ev.unicode = mk->get_unicode();
 			py_call(_p->py_app, p_event_func, py::make_tuple(ev));
 			return true;
 		}
@@ -152,7 +152,6 @@ void PyGodotInstance::destroy_pygodot() {
 		py::module_::import("gc").attr("collect")();
 		// clear global data:
 		_font_cache.clear();
-		_default_font_data = Ref<DynamicFontData>(nullptr);
 		py::print("*** Application is closing.");
 	}
 }
@@ -162,16 +161,18 @@ void PyGodotInstance::destroy_pygodot() {
 
 #ifdef MODULE_FREETYPE_ENABLED
 static Ref<Font> _get_default_dynamic_font(int size, int stretch = 0, int outline = 0) {
+	static Ref<DynamicFontData> default_font_data;
 	std::tuple<std::string, int, int, int> key = std::make_tuple("__default__", size, stretch, outline);
 	if (_font_cache.count(key)) {
 		return _font_cache[key];
 	}
-	if (_default_font_data.is_null()) {
-		_default_font_data.instance();
-		_default_font_data->set_font_ptr(_default_ttf, _default_ttf_size);
+	if (default_font_data.is_null()) {
+		default_font_data.instance();
+		default_font_data->set_font_ptr(_default_ttf, _default_ttf_size);
+		_register_global_ref(default_font_data); // remove at exit
 	}
 	Ref<DynamicFont> font = memnew(DynamicFont);
-	font->set_font_data(_default_font_data);
+	font->set_font_data(default_font_data);
 	font->set_size(size);
 	if (stretch > 0 && stretch < 100) {
 		font->set_stretch_scale(stretch);
@@ -456,6 +457,8 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def_readwrite("height", &Vector2::y)
 		.def("length", &Vector2::length)
 		.def("length_squared", &Vector2::length_squared)
+		.def("min", [](const Vector2 &v, const Vector2 &arg) { return v.min(arg); })
+		.def("max", [](const Vector2 &v, const Vector2 &arg) { return v.max(arg); })
 		.def(py::self + py::self)
 		.def(py::self += py::self)
 		.def(py::self *= real_t())
@@ -796,6 +799,8 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def_readonly("type", &GdEvent::type)
 		.def_readonly("button", &GdEvent::button)
 		.def_readonly("pos", &GdEvent::position)
+		.def_readonly("key", &GdEvent::key)
+		.def_readonly("unicode", &GdEvent::unicode)
 		.def("get_pos", [](const GdEvent &e) { return e.position; })
 		.def("update", []() { })
 		.attr("__version__") = VERSION_FULL_CONFIG;
@@ -830,6 +835,16 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		ERR_FAIL_COND_V(surf.get_surface_type() != GdSurfaceImpl::DISPLAY_SURFACE, std::make_tuple(real_t(0), real_t(0)));
 		if (Node2D *canvas = Object::cast_to<Node2D>(surf.get_as_display()->instance)) {
 			const Vector2 pos = canvas->get_local_mouse_position();
+			return std::make_tuple(pos.x, pos.y);
+		} else {
+			WARN_PRINT("Not an CanvasItem");
+		}
+		return std::make_tuple(real_t(0), real_t(0));
+	});
+	m_mouse.def("get_loc", [](const GdSurface &surf) {
+		ERR_FAIL_COND_V(surf.get_surface_type() != GdSurfaceImpl::DISPLAY_SURFACE, std::make_tuple(real_t(0), real_t(0)));
+		if (Node2D *canvas = Object::cast_to<Node2D>(surf.get_as_display()->instance)) {
+			const Vector2 pos = canvas->get_local_mouse_position().max({0, 0});
 			return std::make_tuple(pos.x, pos.y);
 		} else {
 			WARN_PRINT("Not an CanvasItem");
