@@ -31,7 +31,14 @@
 
 #define PY_SSIZE_T_CLEAN
 
+#ifdef __NX__
+/* NX defines dummy posix_close in unistd.h */
+# define posix_close _posix_close
+#endif
 #include "Python.h"
+#ifdef __NX__
+# undef posix_close
+#endif
 #include "structseq.h"
 
 #if defined(__VMS)
@@ -135,7 +142,7 @@ corresponding Unix manual entries for more information on calls.");
 #define HAVE_FSYNC      1
 #define fsync _commit
 #else
-#if defined(PYOS_OS2) && defined(PYCC_GCC) || defined(__VMS)
+#if defined(PYOS_OS2) && defined(PYCC_GCC) || defined(__VMS) || defined(__NX__)
 /* Everything needed is defined in PC/os2emx/pyconfig.h or vms/pyconfig.h */
 #else                   /* all other compilers */
 /* Unix functions that the configure script doesn't check for */

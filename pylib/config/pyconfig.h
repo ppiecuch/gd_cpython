@@ -126,7 +126,9 @@
 #define DOUBLE_IS_LITTLE_ENDIAN_IEEE754 1
 
 /* Define if --enable-ipv6 is specified */
+#ifndef __NX__
 #define ENABLE_IPV6 1
+#endif
 
 /* Define if flock needs to be linked with bsd library. */
 /* #undef FLOCK_NEEDS_LIBBSD */
@@ -145,7 +147,7 @@
 #define HAVE_ADDRINFO 1
 
 /* Define to 1 if you have the `alarm' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_ALARM 1
 #endif
 
@@ -198,12 +200,12 @@
 /* #undef HAVE_CHFLAGS */
 
 /* Define to 1 if you have the `chown' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_CHOWN 1
 #endif
 
 /* Define if you have the 'chroot' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_CHROOT 1
 #endif
 
@@ -211,7 +213,7 @@
 #define HAVE_CLOCK 1
 
 /* Define to 1 if you have the `confstr' function. */
-#if !defined(__ANDROID__) && !defined(MS_WINDOWS)
+#if !defined(__ANDROID__) && !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_CONFSTR 1
 #endif
 
@@ -224,7 +226,7 @@
 #define HAVE_COPYSIGN 1
 
 /* Define to 1 if you have the `ctermid' function. */
-#if !defined(__ANDROID__) && !defined(MS_WINDOWS)
+#if !defined(__ANDROID__) && !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_CTERMID 1
 #endif
 
@@ -267,12 +269,12 @@
 #endif
 
 /* Define if we have /dev/ptc. */
-#if !defined(__APPLE__) && !defined(MS_WINDOWS)
+#if !defined(__APPLE__) && !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_DEV_PTC
 #endif
 
 /* Define if we have /dev/ptmx. */
-#if !defined(__ANDROID__) && !defined(MS_WINDOWS)
+#if !defined(__ANDROID__) && !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_DEV_PTMX 1
 #endif
 
@@ -312,23 +314,25 @@
 #define HAVE_ERRNO_H 1
 
 /* Define to 1 if you have the `execv' function. */
+#ifndef __NX__
 #define HAVE_EXECV 1
+#endif
 
 /* Define to 1 if you have the `expm1' function. */
 #define HAVE_EXPM1 1
 
 /* Define if you have the 'fchdir' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_FCHDIR 1
 #endif
 
 /* Define to 1 if you have the `fchmod' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_FCHMOD 1
 #endif
 
 /* Define to 1 if you have the `fchown' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_FCHOWN 1
 #endif
 
@@ -347,12 +351,12 @@
 #define HAVE_FINITE 1
 
 /* Define to 1 if you have the `flock' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_FLOCK 1
 #endif
 
 /* Define to 1 if you have the `fork' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_FORK 1
 #endif
 
@@ -364,7 +368,7 @@
 #endif
 
 /* Define to 1 if you have the `fpathconf' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_FPATHCONF 1
 #endif
 
@@ -375,7 +379,9 @@
 #define HAVE_FSEEKO 1
 
 /* Define if you have the 'fsync' function. */
+#ifndef __NX__
 #define HAVE_FSYNC 1
+#endif
 
 /* Define to 1 if you have the `ftell64' function. */
 /* #undef HAVE_FTELL64 */
@@ -417,7 +423,7 @@
 #define HAVE_GETC_UNLOCKED 1
 
 /* Define to 1 if you have the `getgroups' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_GETGROUPS 1
 #endif
 
@@ -437,17 +443,17 @@
 /* #undef HAVE_GETHOSTBYNAME_R_6_ARG */
 
 /* Define to 1 if you have the `getitimer' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_GETITIMER 1
 #endif
 
 /* Define to 1 if you have the `getloadavg' function. */
-#if !defined(__ANDROID__) && !defined(MS_WINDOWS)
+#if !defined(__ANDROID__) && !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_GETLOADAVG 1
 #endif
 
 /* Define to 1 if you have the `getlogin' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_GETLOGIN 1
 #endif
 
@@ -461,12 +467,12 @@
 #define HAVE_GETPEERNAME 1
 
 /* Define to 1 if you have the `getpgid' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_GETPGID 1
 #endif
 
 /* Define to 1 if you have the `getpgrp' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_GETPGRP 1
 #endif
 
@@ -486,7 +492,7 @@
 /* #undef HAVE_GETRESUID */
 
 /* Define to 1 if you have the `getsid' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_GETSID 1
 #endif
 
@@ -536,7 +542,7 @@
 #define HAVE_INET_PTON 1
 
 /* Define to 1 if you have the `initgroups' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_INITGROUPS 1
 #endif
 
@@ -549,12 +555,12 @@
 #endif
 
 /* Define to 1 if you have the `kill' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_KILL 1
 #endif
 
 /* Define to 1 if you have the `killpg' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_KILLPG 1
 #endif
 
@@ -589,7 +595,7 @@
 /* #undef HAVE_LCHFLAGS */
 
 /* Define to 1 if you have the `lchmod' function. */
-#if !defined(__ANDROID__) && !defined(MS_WINDOWS)
+#if !defined(__ANDROID__) && !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_LCHMOD 1
 #endif
 
@@ -618,7 +624,7 @@
 /* #define HAVE_LIBUTIL_H 1 */
 
 /* Define if you have the 'link' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_LINK 1
 #endif
 
@@ -646,7 +652,7 @@
 #define HAVE_LONG_LONG 1
 
 /* Define to 1 if you have the `lstat' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_LSTAT 1
 #endif
 
@@ -662,12 +668,12 @@
 #define HAVE_MEMORY_H 1
 
 /* Define to 1 if you have the `mkfifo' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_MKFIFO 1
 #endif
 
 /* Define to 1 if you have the `mknod' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_MKNOD 1
 #endif
 
@@ -687,7 +693,7 @@
 /* #undef HAVE_NETPACKET_PACKET_H */
 
 /* Define to 1 if you have the `nice' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_NICE 1
 #endif
 
@@ -700,12 +706,12 @@
 #define HAVE_OSX105_SDK 1
 
 /* Define to 1 if you have the `pathconf' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_PATHCONF 1
 #endif
 
 /* Define to 1 if you have the `pause' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_PAUSE 1
 #endif
 
@@ -750,12 +756,14 @@
 #define HAVE_PUTENV 1
 
 /* Define to 1 if you have the `readlink' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_READLINK 1
 #endif
 
 /* Define to 1 if you have the `realpath' function. */
+#ifndef __NX__
 #define HAVE_REALPATH 1
+#endif
 
 /* Define if you have readline 2.1 */
 #define HAVE_RL_CALLBACK 1
@@ -799,27 +807,27 @@
 #define HAVE_SEM_UNLINK 1
 
 /* Define to 1 if you have the `setegid' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_SETEGID 1
 #endif
 
 /* Define to 1 if you have the `seteuid' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_SETEUID 1
 #endif
 
 /* Define to 1 if you have the `setgid' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_SETGID 1
 #endif
 
 /* Define if you have the 'setgroups' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_SETGROUPS 1
 #endif
 
 /* Define to 1 if you have the `setitimer' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_SETITIMER 1
 #endif
 
@@ -827,17 +835,17 @@
 #define HAVE_SETLOCALE 1
 
 /* Define to 1 if you have the `setpgid' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_SETPGID 1
 #endif
 
 /* Define to 1 if you have the `setpgrp' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_SETPGRP 1
 #endif
 
 /* Define to 1 if you have the `setregid' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_SETREGID 1
 #endif
 
@@ -848,17 +856,17 @@
 /* #undef HAVE_SETRESUID */
 
 /* Define to 1 if you have the `setreuid' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_SETREUID 1
 #endif
 
 /* Define to 1 if you have the `setsid' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_SETSID 1
 #endif
 
 /* Define to 1 if you have the `setuid' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_SETUID 1
 #endif
 
@@ -869,12 +877,12 @@
 /* #undef HAVE_SHADOW_H */
 
 /* Define to 1 if you have the `sigaction' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_SIGACTION 1
 #endif
 
 /* Define to 1 if you have the `siginterrupt' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_SIGINTERRUPT 1
 #endif
 
@@ -896,7 +904,7 @@
 #define HAVE_SOCKADDR_STORAGE 1
 
 /* Define if you have the 'socketpair' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_SOCKETPAIR 1
 #endif
 
@@ -988,12 +996,12 @@ typedef _W64 int ssize_t;
 #define HAVE_ST_BLOCKS 1
 
 /* Define if you have the 'symlink' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_SYMLINK 1
 #endif
 
 /* Define to 1 if you have the `sysconf' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_SYSCONF 1
 #endif
 
@@ -1102,17 +1110,19 @@ typedef _W64 int ssize_t;
 #endif
 
 /* Define to 1 if you have the `tcgetpgrp' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_TCGETPGRP 1
 #endif
 
 /* Define to 1 if you have the `tcsetpgrp' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_TCSETPGRP 1
 #endif
 
 /* Define to 1 if you have the `tempnam' function. */
+#ifndef __NX__
 #define HAVE_TEMPNAM 1
+#endif
 
 /* Define to 1 if you have the <termios.h> header file. */
 #define HAVE_TERMIOS_H 1
@@ -1130,7 +1140,7 @@ typedef _W64 int ssize_t;
 #define HAVE_TIMEGM 1
 
 /* Define to 1 if you have the `times' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_TIMES 1
 #endif
 
@@ -1138,7 +1148,9 @@ typedef _W64 int ssize_t;
 #define HAVE_TMPFILE 1
 
 /* Define to 1 if you have the `tmpnam' function. */
+#ifndef __NX__
 #define HAVE_TMPNAM 1
+#endif
 
 /* Define to 1 if you have the `tmpnam_r' function. */
 /* #undef HAVE_TMPNAM_R */
@@ -1165,7 +1177,7 @@ typedef _W64 int ssize_t;
 #define HAVE_UINTPTR_T 1
 
 /* Define to 1 if you have the `uname' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_UNAME 1
 #endif
 
@@ -1190,7 +1202,7 @@ typedef _W64 int ssize_t;
 #endif
 
 /* Define to 1 if you have the `utimes' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_UTIMES 1
 #endif
 
@@ -1200,17 +1212,17 @@ typedef _W64 int ssize_t;
 #endif
 
 /* Define to 1 if you have the `wait3' function. */
-#if !defined(__ANDROID__) && !defined(MS_WINDOWS)
+#if !defined(__ANDROID__) && !defined(MS_WINDOWS)  && !defined(__NX__)
 #define HAVE_WAIT3 1
 #endif
 
 /* Define to 1 if you have the `wait4' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_WAIT4 1
 #endif
 
 /* Define to 1 if you have the `waitpid' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_WAITPID 1
 #endif
 
@@ -1222,7 +1234,7 @@ typedef _W64 int ssize_t;
 
 /* Define if tzset() actually switches the local timezone in a meaningful way.
  */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(__NX__)
 #define HAVE_WORKING_TZSET 1
 #endif
 
@@ -1273,7 +1285,9 @@ typedef _W64 int ssize_t;
 /* #undef POSIX_SEMAPHORES_NOT_ENABLED */
 
 /* Defined if PTHREAD_SCOPE_SYSTEM supported. */
+#ifndef __NX__
 #define PTHREAD_SYSTEM_SCHED_SUPPORTED 1
+#endif
 
 /* Define as the preferred size in bits of long digits */
 /* #undef PYLONG_BITS_IN_DIGIT */

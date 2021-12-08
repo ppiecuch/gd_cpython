@@ -1853,8 +1853,10 @@ PyOS_getsig(int sig)
     return context.sa_handler;
 #else
     PyOS_sighandler_t handler;
+#if defined(__NX__)
+    return SIG_ERR;
 /* Special signal handling for the secure CRT in Visual Studio 2005 */
-#if defined(_MSC_VER) && _MSC_VER >= 1400
+#elif defined(_MSC_VER) && _MSC_VER >= 1400
     switch (sig) {
     /* Only these signals are valid */
     case SIGINT:
@@ -1894,7 +1896,9 @@ PyOS_setsig(int sig, PyOS_sighandler_t handler)
     return ocontext.sa_handler;
 #else
     PyOS_sighandler_t oldhandler;
+#ifndef __NX__
     oldhandler = signal(sig, handler);
+#endif
 #ifdef HAVE_SIGINTERRUPT
     siginterrupt(sig, 1);
 #endif

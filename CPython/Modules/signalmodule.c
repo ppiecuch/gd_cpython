@@ -44,6 +44,11 @@
 # endif
 #endif
 
+#ifdef __NX__
+/* These are fake definitions on NX */
+# undef SIGRTMIN
+# undef SIGRTMAX
+#endif
 
 /*
    NOTES ON THE INTERACTION BETWEEN SIGNALS AND THREADS

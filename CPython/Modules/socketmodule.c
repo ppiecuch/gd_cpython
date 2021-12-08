@@ -3179,8 +3179,10 @@ socket_gethostname(PyObject *self, PyObject *unused)
 {
     char buf[1024];
     int res;
-#ifdef __psp2__
+#if defined(__psp2__)
      return PyString_FromString("vita");
+#elif defined(__NX__)
+     return PyString_FromString("nx");
 #else
     Py_BEGIN_ALLOW_THREADS
     res = gethostname(buf, (int) sizeof buf - 1);
@@ -3531,6 +3533,11 @@ socket_getservbyname(PyObject *self, PyObject *args)
 {
     char *name, *proto=NULL;
     struct servent *sp;
+#if defined(__NX__)
+/* Not available yet. - [cjh] */
+    PyErr_SetString(socket_error, "getservbyname not supported");
+    return NULL;
+#endif
     if (!PyArg_ParseTuple(args, "s|s:getservbyname", &name, &proto))
         return NULL;
     Py_BEGIN_ALLOW_THREADS
@@ -3562,6 +3569,11 @@ socket_getservbyport(PyObject *self, PyObject *args)
     int port;
     char *proto=NULL;
     struct servent *sp;
+#if defined(__NX__)
+/* Not available yet. - [cjh] */
+    PyErr_SetString(socket_error, "getservbyport not supported");
+    return NULL;
+#endif
     if (!PyArg_ParseTuple(args, "i|s:getservbyport", &port, &proto))
         return NULL;
     if (port < 0 || port > 0xffff) {
@@ -3597,8 +3609,8 @@ socket_getprotobyname(PyObject *self, PyObject *args)
 {
     char *name;
     struct protoent *sp;
-#if defined(__BEOS__) || defined(__psp2__)
-/* Not available in BeOS/PSVita yet. - [cjh] */
+#if defined(__BEOS__) || defined(__psp2__) || defined(__NX__)
+/* Not available yet. - [cjh] */
     PyErr_SetString(socket_error, "getprotobyname not supported");
     return NULL;
 #else
