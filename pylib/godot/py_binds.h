@@ -503,7 +503,7 @@ struct GdEvent {
 		};
 		struct {
 			int key;
-			int unicode;
+			wchar_t unicode;
 		};
 	};
 };
@@ -531,6 +531,10 @@ namespace utils {
 
 	py::str unget_text(const py::str &s1, const py::str &s2, int n) {
 		return n == 1 ? s1 : s2;
+	}
+
+	real_t lin_ipol(real_t value, real_t a, real_t b, real_t begin = 0, real_t end = 1.0) {
+		return Math::map(value, a, b, begin, end);
 	}
 } // utils
 

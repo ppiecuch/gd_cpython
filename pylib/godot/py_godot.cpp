@@ -365,6 +365,7 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 	m_utils.def("get_text", &utils::get_text);
 	m_utils.def("unget_text", &utils::unget_text);
 	m_utils.def("print_dict", &utils::print_dict);
+	m_utils.def("lin_ipol", &utils::lin_ipol, "value"_a, "a"_a, "b"_a, "begin"_a = 0, "end"_a = 1.0);
 	// gdgame.math
 	py::module m_math = m.def_submodule("math", "gdgame module with math definitions.");
 	m_math.def("sin", static_cast<real_t (*)(real_t)>(&Math::sin));
