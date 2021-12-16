@@ -10,6 +10,7 @@
 #include "core/version_generated.gen.h"
 #include "core/version_hash.gen.h"
 #include "core/math/geometry.h"
+#include "core/os/os.h"
 #include "servers/visual_server.h"
 
 #include "pylib/godot/py_godot.h"
@@ -160,9 +161,9 @@ void PyGodotInstance::destroy_pygodot() {
 // BEGIN Godot/Python wrapper objects
 
 #ifdef MODULE_FREETYPE_ENABLED
-static Ref<Font> _get_default_dynamic_font(int size, int stretch = 0, int outline = 0) {
+static Ref<Font> _get_default_dynamic_font(int size, int outline_size, Color outline_color, int stretch) {
 	static Ref<DynamicFontData> default_font_data;
-	std::tuple<std::string, int, int, int> key = std::make_tuple("__default__", size, stretch, outline);
+	std::tuple<std::string, int, int, int> key = std::make_tuple("__default__", size, stretch, outline_size);
 	if (_font_cache.count(key)) {
 		return _font_cache[key];
 	}
@@ -177,15 +178,16 @@ static Ref<Font> _get_default_dynamic_font(int size, int stretch = 0, int outlin
 	if (stretch > 0 && stretch < 100) {
 		font->set_stretch_scale(stretch);
 	}
-	if (outline > 0) {
-		font->set_outline_size(outline);
+	if (outline_size > 0) {
+		font->set_outline_size(outline_size);
+		font->set_outline_color(outline_color);
 	}
 	_font_cache[key] = font;
 	return font;
 }
 
-static Ref<Font> _get_dynamic_font(const std::string &path, int size, int stretch = 0, int outline = 0) {
-	std::tuple<std::string, int, int, int> key = std::make_tuple(path, size, stretch, outline);
+static Ref<Font> _get_dynamic_font(const std::string &path, int size, int outline_size, Color outline_color, int stretch) {
+	std::tuple<std::string, int, int, int> key = std::make_tuple(path, size, stretch, outline_size);
 	if (_font_cache.count(key)) {
 		return _font_cache[key];
 	}
@@ -195,8 +197,9 @@ static Ref<Font> _get_dynamic_font(const std::string &path, int size, int stretc
 	if (stretch > 0 && stretch < 100) {
 		font->set_stretch_scale(stretch);
 	}
-	if (outline > 0) {
-		font->set_outline_size(outline);
+	if (outline_size > 0) {
+		font->set_outline_size(outline_size);
+		font->set_outline_color(outline_color);
 	}
 	_font_cache[key] = font;
 	return font;
@@ -293,10 +296,10 @@ static Ref<BitmapFont> make_font_from_hstrip(const String &p_font_path, const St
 	return font;
 }
 
-void GdFont::load(const std::string &path, int size, int stretch) {
+void GdFont::load(const std::string &path, int size, int outline_size, Color outline_color, int stretch) {
 	if (path.empty() || path == "_") {
 #ifdef MODULE_FREETYPE_ENABLED
-		font = _get_default_dynamic_font(size, stretch);
+		font = _get_default_dynamic_font(size, outline_size, outline_color, stretch);
 #else
 		font = _get_default_bitmap_font();
 #endif // MODULE_FREETYPE_ENABLED
@@ -307,13 +310,13 @@ void GdFont::load(const std::string &path, int size, int stretch) {
 #ifdef MODULE_FREETYPE_ENABLED
 			FileAccessRef fnt(FileAccess::open(path.c_str(), FileAccess::READ));
 			if (fnt) {
-				font = _get_dynamic_font(path, size, stretch);
+				font = _get_dynamic_font(path, size, outline_size, outline_color, stretch);
 			} else {
 				WARN_PRINT("Failed to open font at: " + String(path.c_str()));
-				font = _get_default_dynamic_font(size, stretch);
+				font = _get_default_dynamic_font(size, outline_size, outline_color, stretch);
 			}
 #else
-			WARN_PRINT("TrueType font not available.");
+			WARN_PRINT("TrueType font support is not available.");
 #endif // MODULE_FREETYPE_ENABLED
 		} else if (ext == "fnt") {
 			Ref<BitmapFont> _font = ResourceLoader::load(String(path.c_str()), "BitmapFont");
@@ -365,6 +368,7 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 	m_utils.def("get_text", &utils::get_text);
 	m_utils.def("unget_text", &utils::unget_text);
 	m_utils.def("print_dict", &utils::print_dict);
+	m_utils.def("print_verbose", &utils::print_verbose);
 	m_utils.def("lin_ipol", &utils::lin_ipol, "value"_a, "a"_a, "b"_a, "begin"_a = 0, "end"_a = 1.0);
 	// gdgame.math
 	py::module m_math = m.def_submodule("math", "gdgame module with math definitions.");
@@ -527,6 +531,10 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def_property_readonly("bottom", [](const Rect2 &rc) { return rc.position.y + rc.size.height; })
 		.def_property_readonly("width", [](const Rect2 &rc) { return rc.size.width; })
 		.def_property_readonly("height", [](const Rect2 &rc) { return rc.size.height; })
+		.def("get_right", [](const Rect2 &rc) { return rc.position.x + rc.size.width; })
+		.def("get_left", [](const Rect2 &rc) { return rc.position.x; })
+		.def("get_top", [](const Rect2 &rc) { return rc.position.y; })
+		.def("get_bottom", [](const Rect2 &rc) { return rc.position.y + rc.size.height; })
 		.def("get_area", &Rect2::get_area)
 		.def("get_center", &Rect2::get_center)
 		.def("interpolate", &Rect2::interpolate)
@@ -666,6 +674,9 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 	m_info.attr("DEBUG") = false;
 #endif
 	m_info.attr("GODOT") = std::string(get_full_version_string().utf8().c_str());
+	m_info.attr("VERBOSE") = OS::get_singleton()->is_stdout_verbose();
+	m_info.attr("DATA_DIR") = std::string(OS::get_singleton()->get_data_path().utf8().c_str());
+	m_info.attr("USER_DATA_DIR") = std::string(OS::get_singleton()->get_user_data_dir().utf8().c_str());
 	// gdgame.locals
 	py::module m_locals = m.def_submodule("locals", "Module contains various constants used by gdgame.");
 	m_locals.attr("K_SPACE") = py::int_(int(KEY_SPACE));
@@ -890,6 +901,7 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 	py::class_<GdFont>(m_font, "Font")
 		.def(py::init<const std::string&, int>())
 		.def(py::init<const std::string&, int, int>())
+		.def(py::init<const std::string&, int, int, const std::vector<uint8_t>&>())
 		.def("get_height", &GdFont::get_height)
 		.def("size", &GdFont::size)
 		.def("render", overload_cast_<const std::string&, bool, int>()(&GdFont::render))

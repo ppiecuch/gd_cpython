@@ -19,7 +19,7 @@
 
 enum ExModeFlags {
 
-	EX_CREATE = 256,
+	EX_CREATE = 256, // highr values than FileAccess::ModeFlags
 	EX_APPEND = 512,
 };
 
@@ -263,7 +263,7 @@ int _gd_unlink(const char *path) {
 	return da->remove(path) == OK ? SUCCESS : FAILURE;
 }
 
-int _gd_fstat(PYFILE *f, struct stat *buf) {
+int _gd_fstatf(PYFILE *f, struct stat *buf) {
 	if (f) {
 		String path = f->fa->get_path();
 		if (DirAccess::exists(path)) { if (buf) buf->st_mode = S_IFDIR; }
@@ -274,6 +274,16 @@ int _gd_fstat(PYFILE *f, struct stat *buf) {
 #endif
 		if (buf) { buf->st_ctime = buf->st_mtime = FileAccess::get_modified_time(path); }
 		return SUCCESS;
+	}
+	return FAILURE;
+}
+
+int _gd_fstat(int fd, struct stat *buf) {
+	if (fd > 0) {
+		const Id_T t =  make_handle(fd);
+		if (_handles.is_valid(t)) {
+			return _gd_fstatf(_handles[t], buf);
+		}
 	}
 	return FAILURE;
 }

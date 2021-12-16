@@ -849,7 +849,11 @@ win32_wchdir(LPCWSTR path)
 #undef STAT
 #undef FSTAT
 #undef STRUCT_STAT
-#if defined(MS_WIN64) || defined(MS_WINDOWS)
+#if defined(GD_PYTHON) || defined(MODULE_GD_CPYTHON_ENABLED)
+#       define STAT _gd_stat
+#       define FSTAT _gd_fstat
+#       define STRUCT_STAT struct stat
+#elif defined(MS_WIN64) || defined(MS_WINDOWS)
 #       define STAT win32_stat
 #       define FSTAT win32_fstat
 #       define STRUCT_STAT struct win32_stat

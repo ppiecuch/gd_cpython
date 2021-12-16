@@ -980,7 +980,7 @@ load_source_module(char *name, char *pathname, PYFILE *fp)
     PyCodeObject *co;
     PyObject *m;
 
-    if (pyfstat(fp, &st) != 0) {
+    if (pyfstatf(fp, &st) != 0) {
         PyErr_Format(PyExc_RuntimeError,
                      "unable to get file status from '%s'",
                      pathname);

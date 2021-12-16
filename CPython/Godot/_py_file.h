@@ -40,7 +40,8 @@ ssize_t _gd_filesize(int fd);
 PYFILE *_gd_fopen(const char *name, const char *mode);
 PYFILE *_gd_wfopen(const wchar_t *name, const wchar_t *mode);
 PYFILE *_gd_fdopen(const int fd, const char *mode);
-int _gd_fstat(PYFILE *f, struct stat *buf);
+int _gd_fstat(int fd, struct stat *buf);
+int _gd_fstatf(PYFILE *f, struct stat *buf);
 int _gd_stat(const char *path, struct stat *buf);
 int _gd_fclose(PYFILE *f);
 int _gd_fseek(PYFILE *f, off_t offset, int whence);
@@ -83,6 +84,7 @@ PYFILE *_gd_stdout();
 #define pystdout    _gd_stdout()
 #define pystat      _gd_stat
 #define pyfstat     _gd_fstat
+#define pyfstatf    _gd_fstatf
 #define pyfopen     _gd_fopen
 #define pyfdopen    _gd_fdopen
 #define pywfopen    _gd_wfopen
