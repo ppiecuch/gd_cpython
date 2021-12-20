@@ -11,13 +11,15 @@ if env["platform"] == "windows":
 	defines += ["MS_WINDOWS"]
 	search_paths += ["CPython/PC"]
 
-env_module = env.Clone()
+env_module = env_modules.Clone()
 env_module.Append(CPPPATH=search_paths)
 env_module.Append(CPPDEFINES=defines)
-if env["platform"] == "android" or env["platform"] == "iphone":
+if (env["platform"] == "android" and not env["android_rtti"]) or (env["platform"] == "iphone" and not env["ios_exceptions"]):
 	env_module.Append(CPPFLAGS=["-frtti", "-fexceptions"])
+if env["builtin_freetype"]:
+    env_module.Prepend(CPPPATH=["#thirdparty/freetype/include"])
 
-env_glue_module = env.Clone()
+env_glue_module = env_modules.Clone()
 env_glue_module.Append(CPPPATH=search_paths)
 env_glue_module.Append(CPPDEFINES=defines)
 
