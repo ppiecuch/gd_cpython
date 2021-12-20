@@ -2,6 +2,7 @@
 
 #include "core/rid.h"
 #include "core/engine.h"
+#include "core/math/math_defs.h"
 #include "core/math/geometry.h"
 #include "scene/resources/font.h"
 #include "scene/resources/theme.h"
@@ -18,6 +19,7 @@ static bool py_has_error();
 String object_to_string(PyObject *p_val);
 PyObject* import_module(const String& p_code_obj, const String& p_module_name);
 PyObject *call_function(PyObject *p_module, String p_func_name, PyObject *p_args);
+bool add_builtin_symbol(String p_key, Variant p_val);
 
 constexpr const char *__init_func = "gd_init";
 constexpr const char *__tick_func = "gd_tick";
@@ -393,4 +395,31 @@ PyObject *call_function(PyObject *p_module, String p_func_name, PyObject *p_args
 	}
 	Py_XDECREF(p_args); // Release reference to arguments
 	return ret;
+}
+
+bool add_builtin_symbol(String p_key, Variant p_val) {
+	PyObject *name = PyString_FromString("__builtin__");
+	PyObject *builtin = PyImport_Import(name);
+	PyObject *builtin_dict = PyModule_GetDict(builtin);
+	switch (p_val.get_type()) {
+		case Variant::INT: {
+			int val = p_val;
+			PyDict_SetItem(builtin_dict, PyString_FromString(p_key.utf8().c_str()), Py_BuildValue("i", val));
+		} break;
+		case Variant::REAL: {
+			real_t val = p_val;
+#ifdef REAL_T_IS_DOUBLE
+			PyDict_SetItem(builtin_dict, PyString_FromString(p_key.utf8().c_str()), Py_BuildValue("d", val));
+#else
+			PyDict_SetItem(builtin_dict, PyString_FromString(p_key.utf8().c_str()), Py_BuildValue("f", val));
+#endif
+		} break;
+		case Variant::STRING: {
+			String val = p_val;
+			PyDict_SetItemString(builtin_dict, p_key.utf8().c_str(), PyString_FromString(val.utf8().c_str()));
+		} break;
+		default:
+			return false;
+	}
+	return true;
 }
