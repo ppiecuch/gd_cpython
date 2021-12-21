@@ -457,7 +457,7 @@ bool add_builtin_symbol(String p_key, Variant p_val) {
 bool add_builtin_symbols(Dictionary p_vals) {
 	bool ret = true;
 	const Variant *key = nullptr;
-	while (const Variant *key = p_vals.next(key)) {
+	while ((key = p_vals.next(key))) {
 		ret |= add_builtin_symbol(String(*key), p_vals[*key]);
 	}
 	return ret;
