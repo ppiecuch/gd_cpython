@@ -20,6 +20,7 @@ String object_to_string(PyObject *p_val);
 PyObject* import_module(const String& p_code_obj, const String& p_module_name);
 PyObject *call_function(PyObject *p_module, String p_func_name, PyObject *p_args);
 bool add_builtin_symbol(String p_key, Variant p_val);
+bool add_builtin_symbols(Dictionary p_vals);
 
 constexpr const char *__init_func = "gd_init";
 constexpr const char *__tick_func = "gd_tick";
@@ -231,6 +232,14 @@ String CPythonInstance::get_python_file() const {
 	return python_file;
 }
 
+void CPythonInstance::set_python_builtins(const Dictionary &p_dict) {
+	python_builtins = p_dict;
+}
+
+Dictionary CPythonInstance::get_python_builtins() const {
+	return python_builtins;
+}
+
 void CPythonInstance::set_autorun(bool autorun) {
 	python_autorun = autorun;
 }
@@ -297,6 +306,8 @@ void CPythonInstance::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_python_code"), &CPythonInstance::get_python_code);
 	ClassDB::bind_method(D_METHOD("set_python_file", "file"), &CPythonInstance::set_python_file);
 	ClassDB::bind_method(D_METHOD("get_python_file"), &CPythonInstance::get_python_file);
+	ClassDB::bind_method(D_METHOD("set_python_builtins", "dict"), &CPythonInstance::set_python_builtins);
+	ClassDB::bind_method(D_METHOD("get_python_builtins"), &CPythonInstance::get_python_builtins);
 	ClassDB::bind_method(D_METHOD("set_view_size", "file"), &CPythonInstance::set_view_size);
 	ClassDB::bind_method(D_METHOD("get_view_size"), &CPythonInstance::get_view_size);
 	ClassDB::bind_method(D_METHOD("set_autorun", "autorun"), &CPythonInstance::set_autorun);
@@ -316,6 +327,7 @@ void CPythonInstance::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "gd_build_func"), "set_gd_build_func", "get_gd_build_func");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "python_code", PROPERTY_HINT_MULTILINE_TEXT, "", PROPERTY_USAGE_DEFAULT_INTL), "set_python_code", "get_python_code");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "python_file_path"), "set_python_file", "get_python_file");
+	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "python_builtins"), "set_python_builtins", "get_python_builtins");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "debug_level"), "set_debug_level", "get_debug_level");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "verbose_level"), "set_verbose_level", "get_verbose_level");
 
@@ -371,55 +383,82 @@ String object_to_string(PyObject *p_val) {
 
 PyObject* import_module(const String& p_code_obj, const String& p_module_name) {
 	PyObject *po_module = nullptr;
-	PyObject *main_module = PyImport_AddModule("__main__"); // Get reference to main module
-	PyObject *code_obj = PyMarshal_ReadObjectFromString(p_code_obj.utf8().ptr(), p_code_obj.size()); // De-serialize Python code object
-	if(!py_has_error()) {
-		po_module = PyImport_ExecCodeModule(p_module_name.utf8().get_data(), code_obj); // Load module from code object
-		if(!py_has_error()) {
-			PyModule_AddObject(main_module, p_module_name.utf8().get_data(), po_module); // Add module to main module as p_module_name
+	if (PyObject *main_module = PyImport_AddModule("__main__")) { // Get reference to main module
+		if (PyObject *code_obj = PyMarshal_ReadObjectFromString(p_code_obj.utf8().ptr(), p_code_obj.size())) { // De-serialize Python code object
+			if(!py_has_error()) {
+				po_module = PyImport_ExecCodeModule(p_module_name.utf8().get_data(), code_obj); // Load module from code object
+				if(!py_has_error()) {
+					PyModule_AddObject(main_module, p_module_name.utf8().get_data(), po_module); // Add module to main module as p_module_name
+				}
+			}
+			Py_XDECREF(code_obj); // Release object reference (Python cannot track references automatically in C++!)
 		}
-		Py_XDECREF(code_obj); // Release object reference (Python cannot track references automatically in C++!)
 	}
 	return po_module;
 }
 
 PyObject *call_function(PyObject *p_module, String p_func_name, PyObject *p_args) {
 	PyObject *ret = nullptr;
-	PyObject *func = PyObject_GetAttrString(p_module, p_func_name.utf8().get_data()); // Get reference to function p_func_name in module p_module
-	if(!py_has_error()) {
-		ret = PyObject_CallObject(func, p_args); // Call function with arguments p_args
-		if(py_has_error()) {
-			ret = nullptr;
+	if (p_module) {
+		if (PyObject *func = PyObject_GetAttrString(p_module, p_func_name.utf8().get_data())) { // Get reference to function p_func_name in module p_module
+			if(!py_has_error()) {
+				ret = PyObject_CallObject(func, p_args); // Call function with arguments p_args
+				if(py_has_error()) {
+					ret = nullptr;
+				}
+			}
+			Py_XDECREF(func); // Release reference to function
 		}
-		Py_XDECREF(func); // Release reference to function
 	}
 	Py_XDECREF(p_args); // Release reference to arguments
 	return ret;
 }
 
 bool add_builtin_symbol(String p_key, Variant p_val) {
-	PyObject *name = PyString_FromString("__builtin__");
-	PyObject *builtin = PyImport_Import(name);
-	PyObject *builtin_dict = PyModule_GetDict(builtin);
-	switch (p_val.get_type()) {
-		case Variant::INT: {
-			int val = p_val;
-			PyDict_SetItem(builtin_dict, PyString_FromString(p_key.utf8().c_str()), Py_BuildValue("i", val));
-		} break;
-		case Variant::REAL: {
-			real_t val = p_val;
-#ifdef REAL_T_IS_DOUBLE
-			PyDict_SetItem(builtin_dict, PyString_FromString(p_key.utf8().c_str()), Py_BuildValue("d", val));
-#else
-			PyDict_SetItem(builtin_dict, PyString_FromString(p_key.utf8().c_str()), Py_BuildValue("f", val));
-#endif
-		} break;
-		case Variant::STRING: {
-			String val = p_val;
-			PyDict_SetItemString(builtin_dict, p_key.utf8().c_str(), PyString_FromString(val.utf8().c_str()));
-		} break;
-		default:
-			return false;
+	if (p_key.empty()) {
+		return false;
 	}
-	return true;
+	bool ret = true;
+	if (PyObject *name = PyString_FromString("__builtin__")) {
+		if (PyObject *builtin = PyImport_Import(name)) {
+			PyObject *builtin_dict = PyModule_GetDict(builtin);
+			switch (p_val.get_type()) {
+				case Variant::INT: {
+					int val = p_val;
+					PyDict_SetItem(builtin_dict, PyString_FromString(p_key.utf8().c_str()), Py_BuildValue("i", val));
+				} break;
+				case Variant::REAL: {
+					real_t val = p_val;
+		#ifdef REAL_T_IS_DOUBLE
+					PyDict_SetItem(builtin_dict, PyString_FromString(p_key.utf8().c_str()), Py_BuildValue("d", val));
+		#else
+					PyDict_SetItem(builtin_dict, PyString_FromString(p_key.utf8().c_str()), Py_BuildValue("f", val));
+		#endif
+				} break;
+				case Variant::STRING: {
+					String val = p_val;
+					PyDict_SetItemString(builtin_dict, p_key.utf8().c_str(), PyString_FromString(val.utf8().c_str()));
+				} break;
+				default: {
+					ret = false;
+				}
+			}
+			Py_XDECREF(builtin);
+		} else {
+			ret = false;
+		}
+		Py_XDECREF(name);
+	} else {
+		ret = false;
+	}
+	return ret;
+}
+
+bool add_builtin_symbols(Dictionary p_vals) {
+	bool ret = true;
+	const Variant *key = nullptr;
+	while (const Variant *key = p_vals.next(key)) {
+		ret |= add_builtin_symbol(String(*key), p_vals[*key]);
+	}
+	return ret;
 }

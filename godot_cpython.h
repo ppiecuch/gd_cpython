@@ -34,6 +34,7 @@ class CPythonInstance : public Node2D {
 	Size2 view_size;
 	String python_code;
 	String python_file;
+	Dictionary python_builtins;
 	bool python_autorun;
 	String python_gd_build_func;
 	int debug_level;
@@ -68,6 +69,8 @@ public:
 	String get_python_code() const;
 	void set_python_file(const String &path);
 	String get_python_file() const;
+	void set_python_builtins(const Dictionary &p_dict);
+	Dictionary get_python_builtins() const;
 	void set_autorun(bool autorun);
 	bool is_autorun() const;
 	void set_gd_build_func(const String &func);
