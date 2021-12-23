@@ -537,6 +537,17 @@ namespace utils {
 	real_t lin_ipol(real_t value, real_t a, real_t b, real_t begin = 0, real_t end = 1.0) {
 		return Math::map(value, a, b, begin, end);
 	}
+	std::tuple<int, int> get_instance_size(int instance_id) {
+		if (Object *owner = ObjectDB::get_instance(instance_id)) {
+			if (Node2D *canvas = Object::cast_to<Node2D>(owner)) {
+				Size2 size = canvas->call("get_view_size");
+				return std::make_tuple(size.width, size.height);
+			} else {
+				WARN_PRINT("Not an CanvasItem");
+			}
+		}
+		return std::make_tuple(0, 0);
+	}
 } // utils
 
 namespace event {
@@ -574,8 +585,8 @@ namespace display {
 	void set_caption(const std::string &caption) { }
 	_FORCE_INLINE_ GdSurface get_surface(int instance_id) { return GdSurface(instance_id); }
 	_FORCE_INLINE_ void flip(int instance_id) {
-		if (Object *parent = ObjectDB::get_instance(instance_id)) {
-			if (Node2D *canvas = Object::cast_to<Node2D>(parent)) {
+		if (Object *owner = ObjectDB::get_instance(instance_id)) {
+			if (Node2D *canvas = Object::cast_to<Node2D>(owner)) {
 			} else {
 				WARN_PRINT("Not an Node2D");
 			}

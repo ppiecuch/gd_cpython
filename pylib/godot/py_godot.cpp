@@ -40,10 +40,10 @@ template <typename... Args>
 using overload_cast_ = pybind11::detail::overload_cast_impl<Args...>;
 
 #ifdef _HAS_EXCEPTIONS
-static py::object py_eval(const char *expr, const py::object &o);
+py::object py_eval(const char *expr, const py::object &o);
 #endif
-static py::object py_call(py::object p_obj, String p_func_name, py::args p_args = py::args());
-static py::object py_call(String p_func_name, py::args p_args = py::args(), String p_module = "__main__");
+py::object py_call(py::object p_obj, String p_func_name, py::args p_args = py::args());
+py::object py_call(String p_func_name, py::args p_args = py::args(), String p_module = "__main__");
 
 static std::map<std::tuple<std::string, int, int, int>, Ref<Font>> _font_cache;
 
@@ -222,33 +222,31 @@ static Ref<BitmapFont> _get_default_bitmap_font() {
 }
 #endif // MODULE_FREETYPE_ENABLED
 
-static Ref<BitmapFont> make_font_from_grid(int p_height, int p_ascent, int p_charcount, const int *p_char_rects, int p_w, int p_h, const unsigned char *p_img) {
+static Ref<BitmapFont> make_font_from_grid(const String &p_characters, int p_grid_width, int p_grid_height, const String &p_img) {
 	Ref<BitmapFont> font(memnew(BitmapFont));
 
-	Ref<Image> image = memnew(Image(p_img));
-	Ref<ImageTexture> tex = memnew(ImageTexture);
-	tex->create_from_image(image);
+	Ref<Image> image = memnew(Image);
+	if (image->load(p_img) == OK) {
+		Ref<ImageTexture> tex = memnew(ImageTexture);
+		tex->create_from_image(image);
 
-	font->add_texture(tex);
+		font->add_texture(tex);
 
-	for (int i = 0; i < p_charcount; i++) {
-		const int *c = &p_char_rects[i * 8];
-
-		int chr = c[0];
-		Rect2 frect;
-		frect.position.x = c[1];
-		frect.position.y = c[2];
-		frect.size.x = c[3];
-		frect.size.y = c[4];
-		Point2 align(c[6], c[5]);
-		int advance = c[7];
-
-		font->add_char(chr, 0, frect, align, advance);
+		const Size2i cell_size = image->get_size() / Size2(p_grid_width, p_grid_height);
+		for (int x = 0; x < p_grid_width; x++) {
+			for (int y = 0; y < p_grid_height; y++) {
+				const int index = x + y * p_grid_width;
+				if (index < p_characters.length()) {
+					const int chr = p_characters[index];
+					Rect2 frect(Point2(x * cell_size.width, y * cell_size.height), cell_size);
+					font->add_char(chr, 0, frect, Point2(), cell_size.width);
+				} else {
+					break;
+				}
+			}
+		}
+		font->set_height(cell_size.height);
 	}
-
-	font->set_height(p_height);
-	font->set_ascent(p_ascent);
-
 	return font;
 }
 
@@ -320,12 +318,22 @@ void GdFont::load(const std::string &path, int size, int outline_size, Color out
 #endif // MODULE_FREETYPE_ENABLED
 		} else if (ext == "fnt") {
 			Ref<BitmapFont> _font = ResourceLoader::load(String(path.c_str()), "BitmapFont");
-		} else if (ext == "font") {
+		} else if (ext == "hfont") {
 			FileAccessRef fnt(FileAccess::open(path.c_str(), FileAccess::READ));
 			if (fnt) {
 				const String &characters = fnt->get_line();
 				const String &font_file = fnt->get_line();
 				font = make_font_from_hstrip(font_file, characters);
+			} else {
+				WARN_PRINT("Failed to open font at: " + String(path.c_str()));
+			}
+		} else if (ext == "gfont") {
+			FileAccessRef fnt(FileAccess::open(path.c_str(), FileAccess::READ));
+			if (fnt) {
+				const String &characters = fnt->get_line();
+				const String &font_file = fnt->get_line();
+				const Vector<String> &grid = fnt->get_line().split(",");
+				font = make_font_from_grid(font_file, grid[0].to_int(), grid[1].to_int(), characters);
 			} else {
 				WARN_PRINT("Failed to open font at: " + String(path.c_str()));
 			}
@@ -370,6 +378,7 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 	m_utils.def("print_dict", &utils::print_dict);
 	m_utils.def("print_verbose", &utils::print_verbose);
 	m_utils.def("lin_ipol", &utils::lin_ipol, "value"_a, "a"_a, "b"_a, "begin"_a = 0, "end"_a = 1.0);
+	m_utils.def("get_instance_size", &utils::get_instance_size);
 	// gdgame.math
 	py::module m_math = m.def_submodule("math", "gdgame module with math definitions.");
 	m_math.def("sin", static_cast<real_t (*)(real_t)>(&Math::sin));
@@ -835,33 +844,33 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 	m_mouse.def("get_pos", [](int instance_id) {
 			if (Object *instance = ObjectDB::get_instance(instance_id)) {
 				if (CanvasItem *canvas = Object::cast_to<CanvasItem>(instance)) {
-					const Vector2 pos = canvas->get_local_mouse_position();
+					const Vector2i pos = canvas->get_local_mouse_position();
 					return std::make_tuple(pos.x, pos.y);
 				} else {
 					WARN_PRINT("Not an CanvasItem");
 				}
 			}
-			return std::make_tuple(real_t(0), real_t(0));
+			return std::make_tuple(0, 0);
 	});
 	m_mouse.def("get_pos", [](const GdSurface &surf) {
-		ERR_FAIL_COND_V(surf.get_surface_type() != GdSurfaceImpl::DISPLAY_SURFACE, std::make_tuple(real_t(0), real_t(0)));
+		ERR_FAIL_COND_V(surf.get_surface_type() != GdSurfaceImpl::DISPLAY_SURFACE, std::make_tuple(0, 0));
 		if (Node2D *canvas = Object::cast_to<Node2D>(surf.get_as_display()->instance)) {
-			const Vector2 pos = canvas->get_local_mouse_position();
+			const Vector2i pos = canvas->get_local_mouse_position();
 			return std::make_tuple(pos.x, pos.y);
 		} else {
 			WARN_PRINT("Not an CanvasItem");
 		}
-		return std::make_tuple(real_t(0), real_t(0));
+		return std::make_tuple(0, 0);
 	});
 	m_mouse.def("get_loc", [](const GdSurface &surf) {
-		ERR_FAIL_COND_V(surf.get_surface_type() != GdSurfaceImpl::DISPLAY_SURFACE, std::make_tuple(real_t(0), real_t(0)));
+		ERR_FAIL_COND_V(surf.get_surface_type() != GdSurfaceImpl::DISPLAY_SURFACE, std::make_tuple(0, 0));
 		if (Node2D *canvas = Object::cast_to<Node2D>(surf.get_as_display()->instance)) {
-			const Vector2 pos = canvas->get_local_mouse_position().max({0, 0});
+			const Vector2i pos = canvas->get_local_mouse_position().max({0, 0});
 			return std::make_tuple(pos.x, pos.y);
 		} else {
 			WARN_PRINT("Not an CanvasItem");
 		}
-		return std::make_tuple(real_t(0), real_t(0));
+		return std::make_tuple(0, 0);
 	});
 	// gdgame.joystick
 	py::module m_joystick = m.def_submodule("joystick", "gdgame module for interacting with joysticks, gamepads, and trackballs.");
@@ -916,7 +925,7 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 // BEGIN Python utilities
 
 #ifdef _HAS_EXCEPTIONS
-static py::object py_eval(const char *expr, const py::object &o) {
+py::object py_eval(const char *expr, const py::object &o) {
 	py::object res = py::none();
 	try {
 		if (!o.is_none()) {
@@ -940,11 +949,11 @@ static py::object py_eval(const char *expr, const py::object &o) {
 // ----------
 // https://developpaper.com/using-pybind11-to-call-between-c-and-python-code-on-windows-10/
 
-static py::object py_call(py::object p_obj, String p_func_name, py::args p_args) {
+py::object py_call(py::object p_obj, String p_func_name, py::args p_args) {
 	return p_obj.attr(p_func_name.utf8().get_data())(*p_args);
 }
 
-static py::object py_call(String p_func_name, py::args p_args, String p_module) {
+py::object py_call(String p_func_name, py::args p_args, String p_module) {
 	std::string module = p_module.utf8().get_data();
 	std::string function = p_func_name.utf8().get_data();
 
