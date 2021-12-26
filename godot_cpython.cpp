@@ -33,6 +33,7 @@ CPythonEngine *CPythonEngine::instance = nullptr;
 CPythonEngine *CPythonEngine::get_singleton() {
 	static char exec_name[] = "pygodot";
 	static char pythoncaseok[] = "PYTHONCASEOK";
+	static char pythonpycacheprefix[] = "PYTHONPYCACHEPREFIX=res://pycache/";
 	static char vhome[] = "VHOME=user://";
 
 	if (!Py_IsInitialized()) {
@@ -40,6 +41,7 @@ CPythonEngine *CPythonEngine::get_singleton() {
 
 		Py_NoSiteFlag = 1;
 
+		__putenv(pythonpycacheprefix);
 		__putenv(pythoncaseok);
 		__putenv(vhome);
 
@@ -212,8 +214,8 @@ void CPythonInstance::_notification(int p_what) {
 	}
 }
 
-void CPythonInstance::set_python_code(const String &code) {
-	python_code = code;
+void CPythonInstance::set_python_code(const String &p_code) {
+	python_code = p_code;
 	_dirty = true;
 	emit_signal("python_code_changed");
 }
@@ -248,28 +250,36 @@ bool CPythonInstance::is_autorun() const {
 	return python_autorun;
 }
 
-void CPythonInstance::set_gd_build_func(const String &func) {
-	python_gd_build_func = func;
+void CPythonInstance::set_gd_build_func(const String &p_func) {
+	python_gd_build_func = p_func;
 }
 
 String CPythonInstance::get_gd_build_func() const {
 	return python_gd_build_func;
 }
 
-void CPythonInstance::set_debug_level(const int level) {
-	Py_DebugFlag = level;
+void CPythonInstance::set_debug_level(int p_level) {
+	Py_DebugFlag = p_level;
 }
 
 int CPythonInstance::get_debug_level() const {
 	return Py_DebugFlag;
 }
 
-void CPythonInstance::set_verbose_level(const int level) {
-	Py_VerboseFlag = level;
+void CPythonInstance::set_verbose_level(int p_level) {
+	Py_VerboseFlag = p_level;
 }
 
 int CPythonInstance::get_verbose_level() const {
 	return Py_VerboseFlag;
+}
+
+void CPythonInstance::set_optimize_flag(bool p_optimize) {
+	Py_OptimizeFlag = p_optimize;
+}
+
+bool CPythonInstance::get_optimize_flag() const {
+	return Py_OptimizeFlag;
 }
 
 bool CPythonInstance::run() {
@@ -318,6 +328,8 @@ void CPythonInstance::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_debug_level"), &CPythonInstance::get_debug_level);
 	ClassDB::bind_method(D_METHOD("set_verbose_level"), &CPythonInstance::set_verbose_level);
 	ClassDB::bind_method(D_METHOD("get_verbose_level"), &CPythonInstance::get_verbose_level);
+	ClassDB::bind_method(D_METHOD("set_optimize_flag"), &CPythonInstance::set_optimize_flag);
+	ClassDB::bind_method(D_METHOD("get_optimize_flag"), &CPythonInstance::get_optimize_flag);
 
 	ClassDB::bind_method(D_METHOD("run"), &CPythonInstance::run);
 	ClassDB::bind_method(D_METHOD("_input"), &CPythonInstance::_input);
@@ -330,6 +342,7 @@ void CPythonInstance::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "python_builtins"), "set_python_builtins", "get_python_builtins");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "debug_level"), "set_debug_level", "get_debug_level");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "verbose_level"), "set_verbose_level", "get_verbose_level");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "optimize_flag"), "set_optimize_flag", "get_optimize_flag");
 
 	ADD_SIGNAL(MethodInfo("python_file_changed"));
 	ADD_SIGNAL(MethodInfo("python_code_changed"));
@@ -347,6 +360,7 @@ CPythonInstance::CPythonInstance() {
 
 	Py_DebugFlag = 0;
 	Py_VerboseFlag = 0;
+	Py_OptimizeFlag = true;
 }
 
 // Python utilities

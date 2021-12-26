@@ -65,20 +65,22 @@ public:
 	void set_view_size(const Size2 &p_size) { view_size = p_size; update(); }
 	Size2 get_view_size() const { return view_size; }
 
-	void set_python_code(const String &code);
+	void set_python_code(const String &p_code);
 	String get_python_code() const;
-	void set_python_file(const String &path);
+	void set_python_file(const String &p_path);
 	String get_python_file() const;
 	void set_python_builtins(const Dictionary &p_dict);
 	Dictionary get_python_builtins() const;
-	void set_autorun(bool autorun);
+	void set_autorun(bool p_autorun);
 	bool is_autorun() const;
-	void set_gd_build_func(const String &func);
+	void set_gd_build_func(const String &p_func);
 	String get_gd_build_func() const;
-	void set_debug_level(const int level);
+	void set_debug_level(int p_level);
 	int get_debug_level() const;
-	void set_verbose_level(const int level);
+	void set_verbose_level(int p_level);
 	int get_verbose_level() const;
+	void set_optimize_flag(bool p_optimize);
+	bool get_optimize_flag() const;
 
 	bool run();
 
