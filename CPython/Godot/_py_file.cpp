@@ -244,6 +244,10 @@ int _gd_chdir(const char *dir) {
 	return EFAULT;
 }
 
+int _gd_mkdir(const char *dir) {
+	return DirAccess::create_for_path(dir)->make_dir(dir) == OK ? 0 : -1;
+}
+
 char *_gd_getcwd(char *buf, int size) {
 	if (!_current_dir) {
 		return nullptr;

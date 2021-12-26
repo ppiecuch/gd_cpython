@@ -26,6 +26,7 @@ extern "C" {
 typedef struct PYFILE PYFILE;
 
 int _gd_chdir(const char *dir);
+int _gd_mkdir(const char *dir);
 char *_gd_getcwd(char *buf, int size);
 int _gd_unlink(const char* path);
 
@@ -68,6 +69,7 @@ PYFILE *_gd_stdin();
 PYFILE *_gd_stdout();
 
 #define pychdir    _gd_chdir
+#define pymkdir    _gd_mkdir
 #define pygetcwd   _gd_getcwd
 #define pyunlink   _gd_unlink
 
@@ -115,6 +117,7 @@ PYFILE *_gd_stdout();
 typedef FILE PYFILE;
 
 #define pychdir    chdir
+#define pymkdir    mkdir
 #define pygetcwd   getcwd
 #define pyunlink   unlink
 

@@ -289,8 +289,9 @@ extern int lstat(const char *, struct stat *);
 #define pclose  _pclose
 #endif /* _MSC_VER */
 
-#ifdef GD_PYTHON
-#undef HAVE_POPEN /* Godot */
+#ifdef GD_PYTHON /* Godot */
+#undef HAVE_POPEN
+#include "_py_file.h"
 #endif
 
 #if defined(PYCC_VACPP) && defined(PYOS_OS2)
@@ -2534,7 +2535,9 @@ posix_mkdir(PyObject *self, PyObject *args)
                           Py_FileSystemDefaultEncoding, &path, &mode))
         return NULL;
     Py_BEGIN_ALLOW_THREADS
-#if ( defined(__WATCOMC__) || defined(PYCC_VACPP) ) && !defined(__QNX__)
+#if defined(GD_PYTHON)
+     res = pymkdir(path);
+#elif ( defined(__WATCOMC__) || defined(PYCC_VACPP) ) && !defined(__QNX__)
     res = mkdir(path);
 #else
     res = mkdir(path, mode);
