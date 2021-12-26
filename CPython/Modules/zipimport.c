@@ -928,6 +928,187 @@ eq_mtime(time_t t1, time_t t2)
     return d <= 1;
 }
 
+/* Given a pathname for a Python zip source file, fill a buffer with the
+   pathname for the corresponding, compiled external file.  Return the
+   pathname for the compiled file, or NULL if there's no space in the
+   or external location is not defined.
+   Doesn't set an exception. */
+
+static char *
+make_compiled_pathname(char *pathname, char *buf, size_t buflen)
+{
+    char *begin = buf;
+    size_t len = strlen(pathname);
+
+    const char *prefix = Py_GETENV("PYTHONPYCACHEPREFIX");
+    if (prefix) {
+        const size_t prefixlen = strlen(prefix);
+        if (prefixlen < buflen) {
+            memcpy(buf, prefix, prefixlen);
+            buf += prefixlen;
+            buflen -= prefixlen;
+        } else
+            return NULL;
+    } else
+        return NULL;
+#ifdef MS_WINDOWS
+    /* Treat .pyw as if it were .py.  The case of ".pyw" must match
+       that used in _PyImport_StandardFiletab. */
+    if (len >= 4 && strcmp(&pathname[len-4], ".pyw") == 0)
+        --len;          /* pretend 'w' isn't there */
+#endif
+
+    if (len+2 > buflen)
+        return NULL;
+
+    if (prefix) {
+        for(int i=0; i<len; i++)
+            if (pathname[i] != '/'
+#ifdef MS_WINDOWS
+                && pathname[i] != '\\'
+#endif
+            )
+                buf[i] = pathname[i];
+            else
+                buf[i] = '.';
+    } else
+        memcpy(buf, pathname, len);
+
+    buf[len] = Py_OptimizeFlag ? 'o' : 'c';
+    buf[len+1] = '\0';
+
+    return begin;
+}
+
+
+/* Given a pathname for a Python source file, its time of last
+   modification, and a pathname for a compiled file, check whether the
+   compiled file represents the same version of the source.  If so,
+   return a FILE pointer for the compiled file, positioned just after
+   the header; if not, return NULL.
+   Doesn't set an exception. */
+
+static PYFILE *
+check_compiled_module(char *pathname, time_t mtime, char *cpathname)
+{
+    PYFILE *fp;
+    long magic;
+    long pyc_mtime;
+
+    fp = pyfopen(cpathname, "rb");
+    if (fp == NULL)
+        return NULL;
+    magic = PyMarshal_ReadLongFromFile(fp);
+    if (magic != PyImport_GetMagicNumber()) {
+        if (Py_VerboseFlag)
+            PySys_WriteStderr("# %s has bad magic\n", cpathname);
+        pyfclose(fp);
+        return NULL;
+    }
+    pyc_mtime = PyMarshal_ReadLongFromFile(fp);
+    if (pyc_mtime != mtime) {
+        if (Py_VerboseFlag)
+            PySys_WriteStderr("# %s has bad mtime\n", cpathname);
+        pyfclose(fp);
+        return NULL;
+    }
+    if (Py_VerboseFlag)
+        PySys_WriteStderr("# %s matches %s\n", cpathname, pathname);
+    return fp;
+}
+
+/* Helper to open a bytecode file for writing in exclusive mode */
+
+static PYFILE *
+open_exclusive(char *filename, mode_t mode)
+{
+#if defined(O_EXCL)&&defined(O_CREAT)&&defined(O_WRONLY)&&defined(O_TRUNC)
+    /* Use O_EXCL to avoid a race condition when another process tries to
+       write the same file.  When that happens, our open() call fails,
+       which is just fine (since it's only a cache).
+       XXX If the file exists and is writable but the directory is not
+       writable, the file will never be written.  Oh well.
+    */
+    int fd;
+    (void) pyunlink(filename);
+    fd = pyopen(filename, O_EXCL|O_CREAT|O_WRONLY|O_TRUNC
+#ifdef O_BINARY
+                            |O_BINARY   /* necessary for Windows */
+#endif
+#ifdef __VMS
+            , mode, "ctxt=bin", "shr=nil"
+#else
+            , mode
+#endif
+          );
+    if (fd < 0)
+        return NULL;
+    return pyfdopen(fd, "wb");
+#else
+    /* Best we can do -- on Windows this can't happen anyway */
+    return pyfopen(filename, "wb");
+#endif
+}
+
+/* Write a compiled module to a file, placing the time of last
+   modification of its source into the header.
+   Errors are ignored, if a write error occurs an attempt is made to
+   remove the file. */
+
+static void
+write_compiled_module(PyObject *co, char *cpathname, time_t mtime)
+{
+    PYFILE *fp;
+    mode_t mode = 0644;  /* default */
+
+    fp = open_exclusive(cpathname, mode);
+    if (fp == NULL) {
+        if (Py_VerboseFlag)
+            PySys_WriteStderr(
+                "# can't create %s\n", cpathname);
+        return;
+    }
+    PyMarshal_WriteLongToFile(PyImport_GetMagicNumber(), fp, Py_MARSHAL_VERSION);
+    /* First write a 0 for mtime */
+    PyMarshal_WriteLongToFile(0L, fp, Py_MARSHAL_VERSION);
+    PyMarshal_WriteObjectToFile((PyObject *)co, fp, Py_MARSHAL_VERSION);
+    if (pyfflush(fp) != 0 || pyferror(fp)) {
+        if (Py_VerboseFlag)
+            PySys_WriteStderr("# can't write %s\n", cpathname);
+        /* Don't keep partial file */
+        pyfclose(fp);
+        (void) unlink(cpathname);
+        return;
+    }
+    /* Now write the true mtime (as a 32-bit field) */
+    pyfseek(fp, 4L, 0);
+    assert(mtime <= 0xFFFFFFFF);
+    PyMarshal_WriteLongToFile((long)mtime, fp, Py_MARSHAL_VERSION);
+    pyfflush(fp);
+    pyfclose(fp);
+    if (Py_VerboseFlag)
+        PySys_WriteStderr("# wrote %s\n", cpathname);
+}
+
+/* Read a code object from a file and check it for validity */
+
+static PyObject *
+read_compiled_module(char *cpathname, PYFILE *fp)
+{
+    PyObject *co;
+
+    co = PyMarshal_ReadLastObjectFromFile(fp);
+    if (co == NULL)
+        return NULL;
+    if (!PyCode_Check(co)) {
+        PyErr_Format(PyExc_ImportError,
+                     "Non-code object in %.200s", cpathname);
+        Py_DECREF(co);
+        return NULL;
+    }
+    return co;
+}
+
 /* Given the contents of a .py[co] file in a buffer, unmarshal the data
    and return the code object. Return None if it the magic word doesn't
    match (we do this instead of raising an exception as we fall back
@@ -1082,9 +1263,12 @@ static PyObject *
 get_code_from_data(ZipImporter *self, int ispackage, int isbytecode,
                    time_t mtime, PyObject *toc_entry)
 {
-    PyObject *data, *code;
+    PyObject *data, *code = NULL;
     char *modpath;
     char *archive = PyString_AsString(self->archive);
+    PYFILE *fpc;
+    char buf[MAXPATHLEN+1];
+    char *cpathname;
 
     if (archive == NULL)
         return NULL;
@@ -1099,7 +1283,23 @@ get_code_from_data(ZipImporter *self, int ispackage, int isbytecode,
         code = unmarshal_code(modpath, data, mtime);
     }
     else {
-        code = compile_source(modpath, data);
+        cpathname = make_compiled_pathname(modpath, buf, (size_t)MAXPATHLEN + 1);
+        if (cpathname != NULL &&
+            (fpc = check_compiled_module(modpath, mtime, cpathname))) {
+            code = read_compiled_module(cpathname, fpc);
+            pyfclose(fpc);
+            if (code != NULL && Py_VerboseFlag)
+                PySys_WriteStderr("import %s # precompiled from %s\n",
+                                  modpath, cpathname);
+        }
+        if (code == NULL) {
+            code = compile_source(modpath, data);
+            if (cpathname != NULL) {
+                PyObject *ro = PySys_GetObject("dont_write_bytecode");
+                if (ro == NULL || !PyObject_IsTrue(ro))
+                    write_compiled_module(code, cpathname, mtime);
+            }
+        }
     }
     Py_DECREF(data);
     return code;

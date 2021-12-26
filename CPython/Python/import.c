@@ -108,6 +108,22 @@ static const struct filedescr _PyImport_StandardFiletab[] = {
 };
 #endif
 
+/* absolute path can start with the following strings
+ (lenght of the string is stored after string) */
+#define _(n) (const char*)(intptr_t)(n)
+static const char *seps[] = {
+    "/", _(1),
+#ifdef MS_WINDOWS
+    "\\", _(1),
+    "c:\\", _(3),
+#endif
+#ifdef GD_PYTHON
+    "res://", _(6),
+    "user://", _(7),
+#endif
+    NULL
+};
+#undef _
 
 /* Initialize things */
 
@@ -701,10 +717,28 @@ PyImport_ExecCodeModuleEx(const char *name, PyObject *co, char *pathname)
 static char *
 make_compiled_pathname(char *pathname, char *buf, size_t buflen)
 {
+    char *begin = buf;
     size_t len = strlen(pathname);
-    if (len+2 > buflen)
-        return NULL;
 
+    const char *prefix = Py_GETENV("PYTHONPYCACHEPREFIX");
+    if (prefix) {
+        const size_t prefixlen = strlen(prefix);
+        if (prefixlen < buflen) {
+            memcpy(buf, prefix, prefixlen);
+            buf += prefixlen;
+            buflen -= prefixlen;
+        } else
+            return NULL;
+        int index = 0; while(seps[index]) {
+            const char *s = seps[index++];
+            const size_t sl = (intptr_t)seps[index++];
+            if (strncmp(pathname, s, sl) == 0) {
+                pathname += sl;
+                len -= sl;
+                break;
+            }
+        }
+    }
 #ifdef MS_WINDOWS
     /* Treat .pyw as if it were .py.  The case of ".pyw" must match
        that used in _PyImport_StandardFiletab. */
@@ -713,23 +747,43 @@ make_compiled_pathname(char *pathname, char *buf, size_t buflen)
 #endif
 #ifdef GD_PYTHON
     /* Replace res:// with user://__pycache__/ - in production we should
-       propably distribute pyc/pyo objects */
+       propably distribute pyc/pyo objects only */
     const char *res = "res://";
-    const int len_res = 6; /* strlen(res) */
+    const int reslen = 6; /* strlen(res) */
     const char *user = "user://__pycache__/";
-    const int len_user = 19; /* strlen(user) */
-    if (strncmp(res, pathname, len_res) == 0) {
-        memcpy(buf, user, len_user);
-        buf += len_user;
-        pathname += len_res;
-        len -= len_res;
+    const int userlen = 19; /* strlen(user) */
+    if (strncmp(res, pathname, reslen) == 0) {
+        if (userlen < buflen) {
+            memcpy(buf, user, userlen);
+            buf += userlen;
+            buflen -= userlen;
+            pathname += reslen;
+            len -= reslen;
+        } else
+            return NULL;
     }
 #endif
-    memcpy(buf, pathname, len);
+
+    if (len+2 > buflen)
+        return NULL;
+
+    if (prefix) {
+        for(int i=0; i<len; i++)
+            if (pathname[i] != '/'
+#ifdef MS_WINDOWS
+                && pathname[i] != '\\'
+#endif
+            )
+                buf[i] = pathname[i];
+            else
+                buf[i] = '.';
+    } else
+        memcpy(buf, pathname, len);
+
     buf[len] = Py_OptimizeFlag ? 'o' : 'c';
     buf[len+1] = '\0';
 
-    return buf;
+    return begin;
 }
 
 
