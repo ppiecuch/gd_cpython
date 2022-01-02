@@ -938,6 +938,9 @@ static char *
 make_compiled_pathname(char *pathname, char *buf, size_t buflen)
 {
     char *begin = buf;
+
+    if (pathname && *pathname == '*') /* Manage virtual path */
+        pathname++;
     size_t len = strlen(pathname);
 
     const char *prefix = Py_GETENV("PYTHONPYCACHEPREFIX");
@@ -1242,7 +1245,8 @@ get_mtime_of_source(ZipImporter *self, char *path)
     time_t mtime = 0;
     Py_ssize_t lastchar = strlen(path) - 1;
     char savechar = path[lastchar];
-    path[lastchar] = '\0';  /* strip 'c' or 'o' from *.py[co] */
+    if (savechar != 'y')
+        path[lastchar] = '\0';  /* strip 'c' or 'o' from *.py[co] */
     toc_entry = PyDict_GetItemString(self->files, path);
     if (toc_entry != NULL && PyTuple_Check(toc_entry) &&
         PyTuple_Size(toc_entry) == 8) {
@@ -1253,7 +1257,8 @@ get_mtime_of_source(ZipImporter *self, char *path)
         date = PyInt_AsLong(PyTuple_GetItem(toc_entry, 6));
         mtime = parse_dostime(time, date);
     }
-    path[lastchar] = savechar;
+    if (savechar != 'y')
+        path[lastchar] = savechar;
     return mtime;
 }
 
@@ -1332,12 +1337,10 @@ get_module_code(ZipImporter *self, char *fullname,
                               SEP, path);
         toc_entry = PyDict_GetItemString(self->files, path);
         if (toc_entry != NULL) {
-            time_t mtime = 0;
             int ispackage = zso->type & IS_PACKAGE;
             int isbytecode = zso->type & IS_BYTECODE;
 
-            if (isbytecode)
-                mtime = get_mtime_of_source(self, path);
+            int mtime = get_mtime_of_source(self, path);
             if (p_ispackage != NULL)
                 *p_ispackage = ispackage;
             code = get_code_from_data(self, ispackage,

@@ -1691,12 +1691,14 @@ PySys_SetArgvEx(int argc, char **argv, int updatepath)
 #endif /* Unix */
         }
 #endif /* All others */
-        a = PyString_FromStringAndSize(argv0, n);
-        if (a == NULL)
-            Py_FatalError("no mem for sys.path insertion");
-        if (PyList_Insert(path, 0, a) < 0)
-            Py_FatalError("sys.path.insert(0) failed");
-        Py_DECREF(a);
+        if (n > 0) {
+            a = PyString_FromStringAndSize(argv0, n);
+            if (a == NULL)
+                Py_FatalError("no mem for sys.path insertion");
+            if (PyList_Insert(path, 0, a) < 0)
+                Py_FatalError("sys.path.insert(0) failed");
+            Py_DECREF(a);
+        }
     }
     Py_DECREF(av);
 }

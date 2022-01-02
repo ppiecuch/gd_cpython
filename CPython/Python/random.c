@@ -10,6 +10,12 @@
 #endif
 #endif
 
+#ifdef _3DS
+#include "3ds/types.h"
+#include "3ds/result.h"
+#include "3ds/services/ps.h"
+#endif
+
 #ifdef Py_DEBUG
 int _Py_HashSecret_Initialized = 0;
 #else
@@ -224,6 +230,50 @@ lcg_urandom(unsigned int x0, unsigned char *buffer, size_t size)
     }
 }
 
+#ifdef _3DS
+static int
+ctr_urandom_init(int raise)
+{
+    Result res = 0;
+
+    res = psInit();
+    if (R_SUCCEEDED(res))
+        return 0;
+
+    if (raise)
+        PyErr_SetString(PyExc_RuntimeError,
+                        "3DS: Failed to get pxi:ps9 service handle.");
+    else
+        Py_FatalError("3DS: Failed to get pxi:ps9 service handle.");
+
+    return -1;
+}
+
+static int
+ctr_urandom(unsigned char *buffer, Py_ssize_t size, int raise)
+{
+    Result res = 0;
+
+    if (!psGetSessionHandle())
+        ctr_urandom_init(raise);
+
+    res = PS_GenerateRandomBytes(buffer, (size_t)size);
+
+    psExit();
+
+    if (R_SUCCEEDED(res))
+        return 0;
+
+    if (raise)
+        PyErr_SetString(PyExc_RuntimeError,
+                        "3DS: GenerateRandomBytes failed.");
+    else
+        Py_FatalError("3DS: GenerateRandomBytes failed.");
+
+    return -1;
+}
+#endif
+
 /* Fill buffer with size pseudo-random bytes, not suitable for cryptographic
    use, from the operating random number generator (RNG).
 
@@ -246,6 +296,8 @@ _PyOS_URandom(void *buffer, Py_ssize_t size)
     return vms_urandom((unsigned char *)buffer, size, 1);
 # elif defined(__VITA__)
      return sceKernelGetRandomNumber(buffer, size);
+# elif defined(_3DS)
+     return ctr_urandom(buffer, size, raise);
 # else
     return dev_urandom_python((char*)buffer, size);
 # endif

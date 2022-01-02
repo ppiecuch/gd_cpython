@@ -11,12 +11,14 @@
 #include "pylib/godot/py_godot.h"
 
 #include <Python.h>
+#include <osdefs.h>
 #include <marshal.h>
 
 
 static bool py_has_error();
 
-String object_to_string(PyObject *p_val);
+String pystr_to_string(PyObject *p_str);
+String pyobj_to_string(PyObject *p_obj);
 PyObject* import_module(const String& p_code_obj, const String& p_module_name);
 PyObject *call_function(PyObject *p_module, String p_func_name, PyObject *p_args);
 bool add_builtin_symbol(String p_key, Variant p_val);
@@ -57,6 +59,108 @@ CPythonEngine *CPythonEngine::get_singleton() {
 	return instance;
 }
 
+bool CPythonEngine::_add_path(const String &p_path, const String &p_object) {
+	if (!p_path.empty()) {
+		const String key = vformat("[%s]%s", p_object, p_path);
+		if (!search_paths.has(key)) { // keep track of added paths
+			if (PyObject *sys_path = PySys_GetObject(p_object.utf8().c_str())) {
+				PyList_Insert(sys_path, 0, PyString_FromString(p_path.utf8().c_str()));
+				search_paths.push_back(key);
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+Error CPythonEngine::run_code(const String& p_python_code) {
+	if (!p_python_code.empty()) {
+		const char *code = p_python_code.utf8().get_data();
+		if (PyRun_SimpleString(code) == -1) {
+			WARN_PRINT("Executing code with errors.");
+			return ERR_SCRIPT_FAILED;
+		}
+	} else {
+		return ERR_INVALID_PARAMETER;
+	}
+	return OK;
+}
+
+Error CPythonEngine::run_file(const String& p_python_file) {
+	if (!p_python_file.empty()) {
+		const std::string file(p_python_file.utf8().get_data());
+		PYFILE *fp = pyfopen(file.c_str(), "r");
+		if (fp != nullptr) {
+			_add_path(p_python_file.get_base_dir(), "path");
+			Error ret = PyRun_SimpleFile(fp, file.c_str()) == 0 ? OK : ERR_SCRIPT_FAILED;
+			PyErr_Clear();
+			pyfclose(fp);
+			return ret;
+		} else {
+			int save_errno = errno;
+			WARN_PRINT("Could not find/open python file " + p_python_file);
+			errno = save_errno;
+			PyErr_SetFromErrnoWithFilename(PyExc_IOError, file.c_str());
+			PyErr_Print();
+			PyErr_Clear();
+			return ERR_FILE_CANT_OPEN;
+		}
+	} else {
+		return ERR_INVALID_PARAMETER;
+	}
+}
+
+Error CPythonEngine::run_module(const String& p_python_module) {
+	const int set_argv0 = 1;
+	PyObject *runpy, *runmodule, *runargs, *result;
+	runpy = PyImport_ImportModule("runpy");
+	if (runpy == NULL) {
+		ERR_PRINT("Could not import runpy module");
+		return ERR_SCRIPT_FAILED;
+	}
+	runmodule = PyObject_GetAttrString(runpy, "_run_module_as_main");
+	if (runmodule == NULL) {
+		ERR_PRINT("Could not access runpy._run_module_as_main.");
+		Py_DECREF(runpy);
+		return ERR_SCRIPT_FAILED;
+	}
+	runargs = Py_BuildValue("(si)", p_python_module.utf8().get_data(), set_argv0);
+	if (runargs == NULL) {
+		ERR_PRINT("Could not create arguments for runpy._run_module_as_main.");
+		Py_DECREF(runpy);
+		Py_DECREF(runmodule);
+		return ERR_SCRIPT_FAILED;
+	}
+	result = PyObject_Call(runmodule, runargs, NULL);
+	if (result == NULL) {
+		PyErr_Print();
+	}
+	Py_DECREF(runpy);
+	Py_DECREF(runmodule);
+	Py_DECREF(runargs);
+	if (result == NULL) {
+		return ERR_SCRIPT_FAILED;
+	}
+	Py_DECREF(result);
+	return OK;
+}
+
+Error CPythonEngine::run_python(const String& p_python, const Dictionary &p_context) {
+	Array search_paths = p_context[KEY_SEARCH_PATHS];
+	for (const String p : search_paths) {
+		_add_path(p, "path");
+	}
+	Dictionary builtins = p_context[KEY_BUILTINS];
+	add_builtin_symbols(builtins);
+	if (FileAccess::exists(p_python)) {
+		return run_file(p_python);
+	} else if (run_module(p_python) == OK) {
+		return OK;
+	} else {
+		return run_code(p_python);
+	}
+}
+
 CPythonEngine::CPythonEngine() {
 	instance = this;
 }
@@ -64,37 +168,6 @@ CPythonEngine::CPythonEngine() {
 CPythonEngine::~CPythonEngine() {
 	Py_Finalize();
 	instance = nullptr;
-}
-
-void CPythonEngine::run_code(const String& p_python_code) {
-	if (!p_python_code.empty()) {
-		const char *code = p_python_code.utf8().get_data();
-		if (PyRun_SimpleString(code) == -1) {
-			WARN_PRINT("Executing code with errors.");
-		}
-	}
-}
-
-void CPythonEngine::run_file(const String& p_python_file) {
-	if (!p_python_file.empty()) {
-		const std::string file(p_python_file.utf8().get_data());
-		PYFILE *fp = pyfopen(file.c_str(), "r");
-		if (fp != nullptr) {
-			if (PyObject *sys_path = PySys_GetObject("path")) {
-				PyList_SetItem(sys_path, 0, PyString_FromString(p_python_file.get_base_dir().utf8().get_data()));
-			}
-			PyRun_SimpleFile(fp, file.c_str());
-			PyErr_Clear();
-			pyfclose(fp);
-		} else {
-			int save_errno = errno;
-			PySys_WriteStderr("Could not open file\n");
-			errno = save_errno;
-			PyErr_SetFromErrnoWithFilename(PyExc_IOError, file.c_str());
-			PyErr_Print();
-			PyErr_Clear();
-		}
-	}
 }
 
 // Node instance
@@ -129,6 +202,27 @@ bool CPythonInstance::_edit_use_rect() const {
 	return true;
 }
 #endif
+
+void CPythonInstance::_get_property_list(List<PropertyInfo> *p_list) const {
+	if (p_list) {
+		for (List<PropertyInfo>::Element *E = p_list->front(); E; E = E->next()) {
+			PropertyInfo &prop = E->get();
+			if (prop.name.to_lower() == "python_data") {
+				switch (python_data_hint) {
+					case 0: { // Code
+						prop.hint = PROPERTY_HINT_MULTILINE_TEXT;
+					} break;
+					case 1: { // Script Path
+						prop.hint = PROPERTY_HINT_FILE;
+					} break;
+					case 2: { // Module Name
+						prop.hint = PROPERTY_HINT_NONE;
+					} break;
+				}
+			}
+		}
+	}
+}
 
 void CPythonInstance::_input(const Ref<InputEvent> &p_event) {
 	ERR_FAIL_COND(p_event.is_null());
@@ -214,24 +308,23 @@ void CPythonInstance::_notification(int p_what) {
 	}
 }
 
-void CPythonInstance::set_python_code(const String &p_code) {
-	python_code = p_code;
+void CPythonInstance::_set_python_data_hint(int p_hint) {
+	python_data_hint = p_hint;
+	_change_notify();
+}
+
+int CPythonInstance::_get_python_data_hint() const {
+	return python_data_hint;
+}
+
+void CPythonInstance::set_python_data(const String &p_data) {
+	python_data = p_data;
 	_dirty = true;
-	emit_signal("python_code_changed");
+	emit_signal("python_data_changed");
 }
 
-String CPythonInstance::get_python_code() const {
-	return python_code;
-}
-
-void CPythonInstance::set_python_file(const String &path) {
-	python_file = path;
-	_dirty = true;
-	emit_signal("python_file_changed");
-}
-
-String CPythonInstance::get_python_file() const {
-	return python_file;
+String CPythonInstance::get_python_data() const {
+	return python_data;
 }
 
 void CPythonInstance::set_python_builtins(const Dictionary &p_dict) {
@@ -240,6 +333,14 @@ void CPythonInstance::set_python_builtins(const Dictionary &p_dict) {
 
 Dictionary CPythonInstance::get_python_builtins() const {
 	return python_builtins;
+}
+
+void CPythonInstance::set_python_search_paths(const Array &p_paths) {
+	python_search_paths = p_paths;
+}
+
+Array CPythonInstance::get_python_search_paths() const {
+	return python_search_paths;
 }
 
 void CPythonInstance::set_autorun(bool autorun) {
@@ -287,14 +388,12 @@ bool CPythonInstance::run() {
 
 	ERR_FAIL_NULL_V(cpython, false);
 
-	if (!python_file.empty() && _last_file_run != python_file) {
-		cpython->run_file(python_file);
-		_last_file_run = python_file;
-		_running = !py_has_error();
-	}
-	if (!python_code.empty() && _last_code_run != python_code.md5_text()) {
-		cpython->run_code(python_code);
-		_last_code_run = python_code.md5_text();
+	if (!python_data.empty() && _last_python_data != python_data) {
+		Dictionary context;
+		context[CPythonEngine::KEY_SEARCH_PATHS] = python_search_paths;
+		context[CPythonEngine::KEY_BUILTINS] = python_builtins;
+		cpython->run_python(python_data, context);
+		_last_python_data = python_data;
 		_running = !py_has_error();
 	}
 	if (_running) {
@@ -312,13 +411,13 @@ bool CPythonInstance::run() {
 }
 
 void CPythonInstance::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("set_python_code", "code"), &CPythonInstance::set_python_code);
-	ClassDB::bind_method(D_METHOD("get_python_code"), &CPythonInstance::get_python_code);
-	ClassDB::bind_method(D_METHOD("set_python_file", "file"), &CPythonInstance::set_python_file);
-	ClassDB::bind_method(D_METHOD("get_python_file"), &CPythonInstance::get_python_file);
-	ClassDB::bind_method(D_METHOD("set_python_builtins", "dict"), &CPythonInstance::set_python_builtins);
+	ClassDB::bind_method(D_METHOD("set_python_data", "data"), &CPythonInstance::set_python_data);
+	ClassDB::bind_method(D_METHOD("get_python_data"), &CPythonInstance::get_python_data);
+	ClassDB::bind_method(D_METHOD("set_python_builtins", "builtins"), &CPythonInstance::set_python_builtins);
 	ClassDB::bind_method(D_METHOD("get_python_builtins"), &CPythonInstance::get_python_builtins);
-	ClassDB::bind_method(D_METHOD("set_view_size", "file"), &CPythonInstance::set_view_size);
+	ClassDB::bind_method(D_METHOD("set_python_search_paths", "paths"), &CPythonInstance::set_python_search_paths);
+	ClassDB::bind_method(D_METHOD("get_python_search_paths"), &CPythonInstance::get_python_search_paths);
+	ClassDB::bind_method(D_METHOD("set_view_size", "size"), &CPythonInstance::set_view_size);
 	ClassDB::bind_method(D_METHOD("get_view_size"), &CPythonInstance::get_view_size);
 	ClassDB::bind_method(D_METHOD("set_autorun", "autorun"), &CPythonInstance::set_autorun);
 	ClassDB::bind_method(D_METHOD("is_autorun"), &CPythonInstance::is_autorun);
@@ -331,21 +430,24 @@ void CPythonInstance::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_optimize_flag"), &CPythonInstance::set_optimize_flag);
 	ClassDB::bind_method(D_METHOD("get_optimize_flag"), &CPythonInstance::get_optimize_flag);
 
+	ClassDB::bind_method(D_METHOD("_set_python_data_hint", "data"), &CPythonInstance::_set_python_data_hint);
+	ClassDB::bind_method(D_METHOD("_get_python_data_hint"), &CPythonInstance::_get_python_data_hint);
+
 	ClassDB::bind_method(D_METHOD("run"), &CPythonInstance::run);
 	ClassDB::bind_method(D_METHOD("_input"), &CPythonInstance::_input);
 
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "view_size"), "set_view_size", "get_view_size");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "autorun"), "set_autorun", "is_autorun");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "gd_build_func"), "set_gd_build_func", "get_gd_build_func");
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "python_code", PROPERTY_HINT_MULTILINE_TEXT, "", PROPERTY_USAGE_DEFAULT_INTL), "set_python_code", "get_python_code");
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "python_file_path"), "set_python_file", "get_python_file");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "python_data_hint", PROPERTY_HINT_ENUM, "Code,Script Path,Module Name", PROPERTY_USAGE_EDITOR), "_set_python_data_hint", "_get_python_data_hint");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "python_data"), "set_python_data", "get_python_data");
+	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "python_search_paths"), "set_python_search_paths", "get_python_search_paths");
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "python_builtins"), "set_python_builtins", "get_python_builtins");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "debug_level"), "set_debug_level", "get_debug_level");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "verbose_level"), "set_verbose_level", "get_verbose_level");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "optimize_flag"), "set_optimize_flag", "get_optimize_flag");
 
-	ADD_SIGNAL(MethodInfo("python_file_changed"));
-	ADD_SIGNAL(MethodInfo("python_code_changed"));
+	ADD_SIGNAL(MethodInfo("python_data_changed"));
 }
 
 CPythonInstance::CPythonInstance() {
@@ -357,6 +459,7 @@ CPythonInstance::CPythonInstance() {
 
 	python_gd_build_func = "_gd_build";
 	python_autorun = false;
+	python_data_hint = 2; // Module Name
 
 	Py_DebugFlag = 0;
 	Py_VerboseFlag = 0;
@@ -381,12 +484,24 @@ static bool py_has_error() {
 	return error;
 }
 
-String object_to_string(PyObject *p_val) {
+String pyobj_to_string(PyObject *p_obj) {
+	String val;
+	if(p_obj != nullptr) {
+		const char *str = PyString_AsString(PyObject_Repr(p_obj));
+		if (str) {
+			val = String(str);
+		}
+		Py_XDECREF(p_obj); // Release reference to object
+	}
+	return val;
+}
+
+String pystr_to_string(PyObject *p_val) {
 	String val;
 	if(p_val != nullptr) {
 		if(PyUnicode_Check(p_val)) {
 			const char *str = PyString_AsString(p_val);
-			if(!py_has_error()) {
+			if (str) {
 				val = String(str);
 			}
 		}

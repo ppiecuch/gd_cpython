@@ -23,6 +23,9 @@ char *stpcpy(char *__restrict__ dest, const char *__restrict__ src)
 }
 #endif
 
+/* Paths are prepared for running in Godot environment. Folder
+   starting with * are virtual ones (they are always
+   considered as existing ones for lookup cached version) */
 static void calcPathes()
 {
 	if(pathCalculated) return;
@@ -35,7 +38,7 @@ static void calcPathes()
 		}
 	}
 
-	snprintf(modulePathes, 1024, "%s%c/pylib/lib%cpylib.zip%cres://pylib.zip%cres://%c.", progPath, DELIM, DELIM, DELIM, DELIM, DELIM);
+	snprintf(modulePathes, 1024, "%s%c/pylib/lib%cpylib.zip%c*pylib.zip%cres://pylib.zip%cres://%c.", progPath, DELIM, DELIM, DELIM, DELIM, DELIM, DELIM);
 	snprintf(execPrefixPath, MAXPATHLEN, "%s/pylib/exec", progPath);
 	pathCalculated = 1;
 }

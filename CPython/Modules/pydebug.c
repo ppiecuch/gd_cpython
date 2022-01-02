@@ -7,7 +7,7 @@ char *PYTHONCASEOK = 0;
 int __putenv(char *v)
 {
     if (strcmp(v, "PYTHONCASEOK") == 0) {
-        if(PYTHONCASEOK) free(PYTHONCASEOK);
+        if (PYTHONCASEOK) free(PYTHONCASEOK);
         PYTHONCASEOK = calloc(1,1);
         return 1;
     }

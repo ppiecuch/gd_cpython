@@ -6,6 +6,7 @@ Important pieces of implememtation are:
 
 1. C-Api interface to _Godot_ filesystem: [_py_file.cpp](CPython/Godot/_py_file.cpp)
 2. Interface to _Godot_ functions: [py_godot.h](pylib/godot/py_godot.h)
+3. Extended bytecode caching
 
 Example of usage:
 
@@ -49,6 +50,21 @@ __Note:__
 ```
 
   * interface to Godot consist of four methods: ```gd_init( instacne_id )```, ```gd_tick( delta )```, ```gd_event( event )```, ```gd_term( )```
+
+  * alternative way of caching of bytecode (similar to python3) is enabled when env. variable _PYTHONPYCACHEPREFIX_ point to a valid directory.
+    All bytecodes is keeping in given folder (coming from every source used, also from zip archives) in flat format, eg:
+```
+-rw-r--r--  1 piecuchp  staff  18704 Dec 28 16:54 pycache/pylib.zip.sre_parse.pyo
+-rw-r--r--  1 piecuchp  staff   2641 Dec 28 16:54 pycache/pylib.zip.stat.pyo
+-rw-r--r--  1 piecuchp  staff    228 Dec 28 16:54 pycache/pylib.zip.struct.pyo
+-rw-r--r--  1 piecuchp  staff   2440 Dec 28 16:54 pycache/pylib.zip.types.pyo
+-rw-r--r--  1 piecuchp  staff  12046 Dec 28 16:54 pycache/pylib.zip.warnings.pyo
+-rw-r--r--  1 piecuchp  staff  13487 Dec 28 16:54 pycache/pylib.zip.weakref.pyo
+-rw-r--r--  1 piecuchp  staff   7467 Dec 25 22:33 pycache/scripts.control.pyo
+-rw-r--r--  1 piecuchp  staff   2088 Dec 25 22:33 pycache/scripts.controlview.pyo
+-rw-r--r--  1 piecuchp  staff    119 Dec 25 22:33 pycache/scripts.engine.__init__.pyo
+-rw-r--r--  1 piecuchp  staff   3941 Dec 30 20:49 pycache/scripts.engine.app.pyo
+```
 
 ---
 

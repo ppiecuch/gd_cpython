@@ -43,6 +43,8 @@ PyAPI_FUNC(void) _PyImport_ReInitLock(void);
 PyAPI_FUNC(PyObject *)_PyImport_FindExtension(char *, char *);
 PyAPI_FUNC(PyObject *)_PyImport_FixupExtension(char *, char *);
 
+PyAPI_FUNC(char *) _PyImport_GetCachePath(char *path, char *buf, int buflen);
+
 struct _inittab {
     const char *name;
     void (*initfunc)(void);

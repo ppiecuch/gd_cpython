@@ -181,6 +181,9 @@ sources = [
 	"CPython/Godot/_py_file.cpp",
 ]
 
+if env["platform"] == "3ds":
+	sources += ["CPython/Python/Modules/_ctrumodule.c"]
+
 if env["platform"] == "osx":
 	sources += ["CPython/Python/mactoolboxglue.c"]
 

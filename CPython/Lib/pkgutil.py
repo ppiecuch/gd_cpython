@@ -181,7 +181,8 @@ class ImpImporter:
         if self.path is None:
             path = None
         else:
-            path = [os.path.realpath(self.path)]
+            # Note: we can also [os.path.realpath(self.path)]
+            path = self.path
         try:
             file, filename, etc = imp.find_module(subname, path)
         except ImportError:
@@ -280,7 +281,7 @@ class ImpLoader:
             mod_type = self.etc[2]
             if mod_type==imp.PY_SOURCE:
                 source = self.get_source(fullname)
-                self.code = compile(source, self.filename, 'exec')
+                self.code = compile(source, self.filename, 'exec', cache_bytecode=True)
             elif mod_type==imp.PY_COMPILED:
                 self._reopen()
                 try:

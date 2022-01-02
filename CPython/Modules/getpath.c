@@ -145,7 +145,7 @@ static int
 isfile(char *filename)          /* Is file, not directory */
 {
     struct stat buf;
-    if (stat(filename, &buf) != 0)
+    if (pystat(filename, &buf) != 0)
         return 0;
     if (!S_ISREG(buf.st_mode))
         return 0;
@@ -173,7 +173,7 @@ static int
 isxfile(char *filename)         /* Is executable file */
 {
     struct stat buf;
-    if (stat(filename, &buf) != 0)
+    if (pystat(filename, &buf) != 0)
         return 0;
     if (!S_ISREG(buf.st_mode))
         return 0;
@@ -187,7 +187,7 @@ static int
 isdir(char *filename)                   /* Is directory */
 {
     struct stat buf;
-    if (stat(filename, &buf) != 0)
+    if (pystat(filename, &buf) != 0)
         return 0;
     if (!S_ISDIR(buf.st_mode))
         return 0;

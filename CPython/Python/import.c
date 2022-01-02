@@ -603,7 +603,6 @@ _PyImport_FindExtension(char *name, char *filename)
     return mod;
 }
 
-
 /* Get the module object corresponding to a module name.
    First check the modules dictionary if there's one there,
    if not, create a new one and insert it in the modules dictionary.
@@ -710,9 +709,9 @@ PyImport_ExecCodeModuleEx(const char *name, PyObject *co, char *pathname)
 }
 
 /* Given a pathname for a Python source file, fill a buffer with the
-   pathname for the corresponding compiled file.  Return the pathname
+   pathname for the corresponding compiled file. Return the pathname
    for the compiled file, or NULL if there's no space in the buffer.
-   Doesn't set an exception. */
+   Check for external locations too. Doesn't set an exception. */
 
 static char *
 make_compiled_pathname(char *pathname, char *buf, size_t buflen)
@@ -782,7 +781,58 @@ make_compiled_pathname(char *pathname, char *buf, size_t buflen)
 
     buf[len] = Py_OptimizeFlag ? 'o' : 'c';
     buf[len+1] = '\0';
+    return begin;
+}
 
+
+/* Given a pathname for a Python bytecode file, check for
+   the corresponding external location. Return the pathname
+   for the compiled file, or NULL if path cannot be built.
+   Doesn't set an exception. */
+
+static char *
+make_pycache_pathname(char *pathname, char *buf, size_t buflen)
+{
+    char *begin = buf;
+
+    if (pathname && *pathname == '*') /* Manage virtual path */
+        pathname++;
+    size_t len = strlen(pathname);
+
+    const char *prefix = Py_GETENV("PYTHONPYCACHEPREFIX");
+    if (prefix == NULL)
+        return NULL;
+
+    const size_t prefixlen = strlen(prefix);
+    if (prefixlen < buflen) {
+        memcpy(buf, prefix, prefixlen);
+        buf += prefixlen;
+        buflen -= prefixlen;
+    } else
+        return NULL;
+
+    int index = 0; while(seps[index]) {
+        const char *s = seps[index++];
+        const size_t sl = (intptr_t)seps[index++];
+        if (strncmp(pathname, s, sl) == 0) {
+            pathname += sl;
+            len -= sl;
+            break;
+        }
+    }
+
+    for(int i=0; i<len; i++)
+        if (pathname[i] != '/'
+#ifdef MS_WINDOWS
+            && pathname[i] != '\\'
+#endif
+        )
+            buf[i] = pathname[i];
+        else
+            buf[i] = '.';
+
+    buf[len] = '\0';
+printf("### %s -> %s\n",pathname, begin);
     return begin;
 }
 
@@ -1082,6 +1132,59 @@ load_source_module(char *name, char *pathname, PYFILE *fp)
     return m;
 }
 
+/* Check if given path is one of the virtual directories
+ */
+static int
+_is_virt_path(const char *path) {
+    if (path != NULL && *path == '*') {
+        return 1;
+    }
+    return 0;
+}
+
+/* Check if for given path there is a cached package. */
+static int
+_is_cached_package(const char *path) {
+    const char *prefix = Py_GETENV("PYTHONPYCACHEPREFIX");
+    if (prefix == NULL)
+        return 0;
+    if (path && *path == '*') /* handle virtual path */
+        path++;
+    char buffer[MAXPATHLEN+1], *buf = buffer;
+    int buflen = MAXPATHLEN;
+    int len = strlen(path);
+    const size_t prefixlen = strlen(prefix);
+    if (prefixlen + len < buflen) {
+        memcpy(buf, prefix, prefixlen);
+        buf += prefixlen;
+        buflen -= prefixlen;
+    } else
+        return 0;
+    for(int i=0; i<len; i++)
+        if (path[i] != '/'
+#ifdef MS_WINDOWS
+            && path[i] != '\\'
+#endif
+        )
+            buf[i] = path[i];
+        else
+            buf[i] = '.';
+    /* Check for path separator */
+    if (len > 0 && buf[len-1] != '.') {
+        buf[len] = '.';
+        buf++;
+        buflen--;
+    }
+    buf += len;
+    buflen -= len;
+    /* Check for pyc/pyo cached bytecode */
+    strcpy(buf, "__init__.py?");
+    buf += 11; /* last char of "__init__.py?" */
+    *buf = Py_OptimizeFlag ? 'o' : 'c';
+    if (Py_VerboseFlag)
+        PySys_WriteStderr("# checking %s\n", buffer);
+    return (pystat(buffer, NULL) == 0);
+}
 
 /* Forward */
 static PyObject *load_module(char *, PYFILE *, char *, int, PyObject *);
@@ -1324,7 +1427,7 @@ find_module(char *fullname, char *subname, PyObject *path, char *buf,
 
     /* (PP) */
     if (fullname != NULL && is_builtin(fullname)) {
-        strcpy(buf, fullname);
+        strncpy(buf, fullname, buflen);
         return &fd_builtin;
     }
 
@@ -1387,7 +1490,7 @@ find_module(char *fullname, char *subname, PyObject *path, char *buf,
                         "sys.path_importer_cache must be a dict");
         return NULL;
     }
-    
+
     npath = PyList_Size(path);
     namelen = strlen(name);
     for (i = 0; i < npath; i++) {
@@ -1460,10 +1563,14 @@ find_module(char *fullname, char *subname, PyObject *path, char *buf,
         /* Check for package import (buf holds a directory name,
            and there's an __init__ module in that directory */
 #ifdef HAVE_STAT
-        if (pystat(buf, &statbuf) == 0 &&       /* it exists */
+        if (_is_cached_package(buf)) {
+            Py_XDECREF(copy);
+            return &fd_package;
+        }
+        else if (pystat(buf, &statbuf) == 0 &&  /* it exists */
             S_ISDIR(statbuf.st_mode) &&         /* it's a directory */
             case_ok(buf, len, namelen, name)) { /* case matches */
-            if (find_init_module(buf)) { /* and has __init__.py */
+            if (find_init_module(buf)) {        /* and has __init__.py */
                 Py_XDECREF(copy);
                 return &fd_package;
             }
@@ -1500,7 +1607,7 @@ find_module(char *fullname, char *subname, PyObject *path, char *buf,
                 }
         }
 #endif
-#endif
+#endif /* HAVE_STAT */
 #if defined(PYOS_OS2)
         /* take a snapshot of the module spec for restoration
          * after the 8 character DLL hackery
@@ -1542,6 +1649,15 @@ find_module(char *fullname, char *subname, PyObject *path, char *buf,
             if (filemode[0] == 'U')
                 filemode = "r" PY_STDIOTEXTMODE;
             fp = pyfopen(buf, filemode);
+            if (fp == NULL && fdp->type == PY_COMPILED) {
+                /* Maybe external cache exists ? */
+                char cpathname[MAXPATHLEN+1];
+                if (make_pycache_pathname(buf, cpathname, (size_t)MAXPATHLEN + 1)) {
+                    fp = pyfopen(cpathname, filemode);
+                    if (fp != NULL)
+                        strncpy(buf, cpathname, buflen);
+                }
+            }
             if (fp != NULL) {
                 if (case_ok(buf, len, namelen, name))
                     break;
@@ -2895,7 +3011,6 @@ imp_get_suffixes(PyObject *self, PyObject *noargs)
 static PyObject *
 call_find_module(char *name, PyObject *path)
 {
-    extern int fclose(FILE *);
     PyObject *fob, *ret;
     struct filedescr *fdp;
     char pathname[MAXPATHLEN+1];
@@ -3269,9 +3384,16 @@ NullImporter_init(NullImporter *self, PyObject *args, PyObject *kwds)
 #ifndef RISCOS
 #ifndef MS_WINDOWS
         struct stat statbuf;
-        int rv;
-
-        rv = pystat(path, &statbuf);
+        /* Not every directory is handled here - subdirectory is only
+           detected for packages. If you need a real subdirectory, you
+           you need to add it to virtual paths.*/
+        if (_is_virt_path(path) || _is_cached_package(path)) {
+            /* it's a virtual directory */
+            PyErr_SetString(PyExc_ImportError,
+                            "virtual directory");
+            return -1;
+        }
+        int rv = pystat(path, &statbuf);
         if (rv == 0) {
             /* it exists */
             if (S_ISDIR(statbuf.st_mode)) {
@@ -3453,6 +3575,12 @@ PyImport_AppendInittab(const char *name, void (*initfunc)(void))
     newtab[0].initfunc = initfunc;
 
     return PyImport_ExtendInittab(newtab);
+}
+
+char *
+_PyImport_GetCachePath(char *path, char *buf, int buflen)
+{
+    return make_compiled_pathname(path, buf, buflen);
 }
 
 #ifdef __cplusplus

@@ -6,6 +6,8 @@
 #include "node.h"
 #include "code.h"
 #include "eval.h"
+#include "osdefs.h"
+#include "marshal.h"
 
 #include <ctype.h>
 #include <float.h> /* for DBL_MANT_DIG and friends */
@@ -454,6 +456,131 @@ Return a tuple consisting of the two numeric arguments converted to\n\
 a common type, using the same rules as used by arithmetic operations.\n\
 If coercion is not possible, raise TypeError.");
 
+/* Helper to open a bytecode file for writing in exclusive mode */
+
+static PYFILE *
+open_exclusive(char *filename, mode_t mode)
+{
+#if defined(O_EXCL)&&defined(O_CREAT)&&defined(O_WRONLY)&&defined(O_TRUNC)
+    /* Use O_EXCL to avoid a race condition when another process tries to
+       write the same file.  When that happens, our open() call fails,
+       which is just fine (since it's only a cache).
+       XXX If the file exists and is writable but the directory is not
+       writable, the file will never be written.  Oh well.
+    */
+    int fd;
+    (void) pyunlink(filename);
+    fd = pyopen(filename, O_EXCL|O_CREAT|O_WRONLY|O_TRUNC
+#ifdef O_BINARY
+                            |O_BINARY   /* necessary for Windows */
+#endif
+#ifdef __VMS
+            , mode, "ctxt=bin", "shr=nil"
+#else
+            , mode
+#endif
+          );
+    if (fd < 0)
+        return NULL;
+    return pyfdopen(fd, "wb");
+#else
+    /* Best we can do -- on Windows this can't happen anyway */
+    return pyfopen(filename, "wb");
+#endif
+}
+
+/* Given a pathname for a Python zip source file, fill a buffer with the
+   pathname for the corresponding, compiled external file.  Return the
+   pathname for the compiled file, or NULL if there's no space in the
+   or external location is not defined.
+   Doesn't set an exception. */
+
+static char *
+make_compiled_pathname(char *pathname, char *buf, size_t buflen)
+{
+    char *begin = buf;
+    size_t len = strlen(pathname);
+
+    const char *prefix = Py_GETENV("PYTHONPYCACHEPREFIX");
+    if (prefix) {
+        const size_t prefixlen = strlen(prefix);
+        if (prefixlen < buflen) {
+            memcpy(buf, prefix, prefixlen);
+            buf += prefixlen;
+            buflen -= prefixlen;
+        } else
+            return NULL;
+    } else
+        return NULL;
+#ifdef MS_WINDOWS
+    /* Treat .pyw as if it were .py.  The case of ".pyw" must match
+       that used in _PyImport_StandardFiletab. */
+    if (len >= 4 && strcmp(&pathname[len-4], ".pyw") == 0)
+        --len;          /* pretend 'w' isn't there */
+#endif
+
+    if (len+2 > buflen)
+        return NULL;
+
+    if (prefix) {
+        for(int i=0; i<len; i++)
+            if (pathname[i] != '/'
+#ifdef MS_WINDOWS
+                && pathname[i] != '\\'
+#endif
+            )
+                buf[i] = pathname[i];
+            else
+                buf[i] = '.';
+    } else
+        memcpy(buf, pathname, len);
+
+    buf[len] = Py_OptimizeFlag ? 'o' : 'c';
+    buf[len+1] = '\0';
+
+    return begin;
+}
+
+/* Write a compiled module to a file, placing the time of last
+   modification of its source into the header.
+   Errors are ignored, if a write error occurs an attempt is made to
+   remove the file. */
+
+static void
+write_compiled_module(PyObject *co, char *cpathname, time_t mtime)
+{
+    PYFILE *fp;
+    mode_t mode = 0644;  /* default */
+
+    fp = open_exclusive(cpathname, mode);
+    if (fp == NULL) {
+        if (Py_VerboseFlag)
+            PySys_WriteStderr(
+                "# can't create %s\n", cpathname);
+        return;
+    }
+    PyMarshal_WriteLongToFile(PyImport_GetMagicNumber(), fp, Py_MARSHAL_VERSION);
+    /* First write a 0 for mtime */
+    PyMarshal_WriteLongToFile(0L, fp, Py_MARSHAL_VERSION);
+    PyMarshal_WriteObjectToFile((PyObject *)co, fp, Py_MARSHAL_VERSION);
+    if (pyfflush(fp) != 0 || pyferror(fp)) {
+        if (Py_VerboseFlag)
+            PySys_WriteStderr("# can't write %s\n", cpathname);
+        /* Don't keep partial file */
+        pyfclose(fp);
+        (void) unlink(cpathname);
+        return;
+    }
+    /* Now write the true mtime (as a 32-bit field) */
+    pyfseek(fp, 4L, 0);
+    assert(mtime <= 0xFFFFFFFF);
+    PyMarshal_WriteLongToFile((long)mtime, fp, Py_MARSHAL_VERSION);
+    pyfflush(fp);
+    pyfclose(fp);
+    if (Py_VerboseFlag)
+        PySys_WriteStderr("# wrote %s\n", cpathname);
+}
+
 static PyObject *
 builtin_compile(PyObject *self, PyObject *args, PyObject *kwds)
 {
@@ -463,17 +590,18 @@ builtin_compile(PyObject *self, PyObject *args, PyObject *kwds)
     int mode = -1;
     int dont_inherit = 0;
     int supplied_flags = 0;
+    int cache_bytecode = 0;
     int is_ast;
     PyCompilerFlags cf;
     PyObject *result = NULL, *cmd, *tmp = NULL;
     Py_ssize_t length;
     static char *kwlist[] = {"source", "filename", "mode", "flags",
-                             "dont_inherit", NULL};
+                             "dont_inherit", "cache_bytecode", NULL};
     int start[] = {Py_file_input, Py_eval_input, Py_single_input};
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "Oss|ii:compile",
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "Oss|iii:compile",
                                      kwlist, &cmd, &filename, &startstr,
-                                     &supplied_flags, &dont_inherit))
+                                     &supplied_flags, &dont_inherit, &cache_bytecode))
         return NULL;
 
     cf.cf_flags = supplied_flags;
@@ -546,6 +674,20 @@ builtin_compile(PyObject *self, PyObject *args, PyObject *kwds)
         goto cleanup;
     }
     result = Py_CompileStringFlags(str, filename, start[mode], &cf);
+
+    if (cache_bytecode && filename != NULL) {
+        char buf[MAXPATHLEN+1];
+        char *cpathname = make_compiled_pathname(filename, buf, (size_t)MAXPATHLEN + 1);
+        if (cpathname != NULL) {
+            int mtime = 0;
+#ifdef HAVE_STAT
+            struct stat statbuf;
+            if (pystat(filename, &statbuf) == 0)
+                mtime = statbuf.st_mtime;
+#endif
+            write_compiled_module(result, cpathname, mtime);
+        }
+    }
 cleanup:
     Py_XDECREF(tmp);
     return result;

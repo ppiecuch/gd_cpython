@@ -12,15 +12,26 @@ class CPythonEngine : public Object {
 	GDCLASS(CPythonEngine, Object);
 
 	String exec_file;
+	Vector<String> search_paths;
 
 	static CPythonEngine *instance;
 
+	bool _add_path(const String &p_path, const String &p_object);
+
 public:
+	enum {
+		KEY_SEARCH_PATHS,
+		KEY_BUILTINS,
+	};
+
 	static CPythonEngine *get_singleton();
 
 	bool has_error();
-	void run_file(const String& p_python_file);
-	void run_code(const String& p_python_code);
+
+	Error run_file(const String& p_python_file);
+	Error run_code(const String& p_python_code);
+	Error run_module(const String& p_python_module);
+	Error run_python(const String& p_python, const Dictionary &p_context);
 
 	CPythonEngine();
 	~CPythonEngine();
@@ -32,9 +43,10 @@ class CPythonInstance : public Node2D {
 	GDCLASS(CPythonInstance, Node2D);
 
 	Size2 view_size;
-	String python_code;
-	String python_file;
+	String python_data;
+	int python_data_hint;
 	Dictionary python_builtins;
+	Array python_search_paths;
 	bool python_autorun;
 	String python_gd_build_func;
 	int debug_level;
@@ -43,11 +55,11 @@ class CPythonInstance : public Node2D {
 	PyGodotInstance _py;
 
 	bool _running, _pausing;
-	String _last_file_run;
-	String _last_code_run;
+	String _last_python_data;
 	bool _dirty;
 
 protected:
+	void _get_property_list(List<PropertyInfo> *p_list) const;
 	void _notification(int p_what);
 	void _input(const Ref<InputEvent> &p_event);
 	static void _bind_methods();
@@ -65,12 +77,15 @@ public:
 	void set_view_size(const Size2 &p_size) { view_size = p_size; update(); }
 	Size2 get_view_size() const { return view_size; }
 
-	void set_python_code(const String &p_code);
-	String get_python_code() const;
-	void set_python_file(const String &p_path);
-	String get_python_file() const;
+	void _set_python_data_hint(int p_hint);
+	int _get_python_data_hint() const;
+
+	void set_python_data(const String &p_data);
+	String get_python_data() const;
 	void set_python_builtins(const Dictionary &p_dict);
 	Dictionary get_python_builtins() const;
+	void set_python_search_paths(const Array &p_paths);
+	Array get_python_search_paths() const;
 	void set_autorun(bool p_autorun);
 	bool is_autorun() const;
 	void set_gd_build_func(const String &p_func);
