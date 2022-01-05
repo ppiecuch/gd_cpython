@@ -794,9 +794,6 @@ static char *
 make_pycache_pathname(char *pathname, char *buf, size_t buflen)
 {
     char *begin = buf;
-
-    if (pathname && *pathname == '*') /* Manage virtual path */
-        pathname++;
     size_t len = strlen(pathname);
 
     const char *prefix = Py_GETENV("PYTHONPYCACHEPREFIX");
@@ -832,7 +829,6 @@ make_pycache_pathname(char *pathname, char *buf, size_t buflen)
             buf[i] = '.';
 
     buf[len] = '\0';
-printf("### %s -> %s\n",pathname, begin);
     return begin;
 }
 
@@ -1142,16 +1138,17 @@ _is_virt_path(const char *path) {
     return 0;
 }
 
-/* Check if for given path there is a cached package. */
+/* Check if for given real or virtual path there is
+   a cached package. */
 static int
 _is_cached_package(const char *path) {
     const char *prefix = Py_GETENV("PYTHONPYCACHEPREFIX");
     if (prefix == NULL)
         return 0;
-    if (path && *path == '*') /* handle virtual path */
-        path++;
     char buffer[MAXPATHLEN+1], *buf = buffer;
     int buflen = MAXPATHLEN;
+    if (path && *path == '*') /* Manage virtual path */
+        path++;
     int len = strlen(path);
     const size_t prefixlen = strlen(prefix);
     if (prefixlen + len < buflen) {
@@ -1510,12 +1507,12 @@ find_module(char *fullname, char *subname, PyObject *path, char *buf,
 #endif
         if (!PyString_Check(v))
             continue;
-        len = PyString_GET_SIZE(v);
+        len = PyString_GET_SIZE(v) - _is_virt_path(PyString_AS_STRING(v));
         if (len + 2 + namelen + MAXSUFFIXSIZE >= buflen) {
             Py_XDECREF(copy);
             continue; /* Too long */
         }
-        strcpy(buf, PyString_AS_STRING(v));
+        strcpy(buf, PyString_AS_STRING(v) + _is_virt_path(PyString_AS_STRING(v)));
         if (strlen(buf) != len) {
             Py_XDECREF(copy);
             continue; /* v contains '\0' */
@@ -1551,6 +1548,14 @@ find_module(char *fullname, char *subname, PyObject *path, char *buf,
         }
         /* no hook was found, use builtin import */
 
+#ifdef HAVE_STAT
+        if (pystat(buf, &statbuf) == 0 &&      /* it exists */
+            S_ISREG(statbuf.st_mode)) {         /* it's a file */
+                Py_XDECREF(copy);
+                continue;
+            }
+#endif
+
         if (len > 0 && buf[len-1] != SEP
 #ifdef ALTSEP
             && buf[len-1] != ALTSEP
@@ -1560,14 +1565,10 @@ find_module(char *fullname, char *subname, PyObject *path, char *buf,
         strcpy(buf+len, name);
         len += namelen;
 
-        /* Check for package import (buf holds a directory name,
+        /* Check for package import (but holds a directory name,
            and there's an __init__ module in that directory */
 #ifdef HAVE_STAT
-        if (_is_cached_package(buf)) {
-            Py_XDECREF(copy);
-            return &fd_package;
-        }
-        else if (pystat(buf, &statbuf) == 0 &&  /* it exists */
+        if (pystat(buf, &statbuf) == 0 &&       /* it exists */
             S_ISDIR(statbuf.st_mode) &&         /* it's a directory */
             case_ok(buf, len, namelen, name)) { /* case matches */
             if (find_init_module(buf)) {        /* and has __init__.py */
@@ -1585,6 +1586,10 @@ find_module(char *fullname, char *subname, PyObject *path, char *buf,
                     return NULL;
                 }
             }
+        }
+        else if (_is_cached_package(buf)) {
+            Py_XDECREF(copy);
+            return &fd_package;
         }
 #else
         /* XXX How are you going to test for directories? */

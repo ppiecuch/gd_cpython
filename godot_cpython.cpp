@@ -53,7 +53,8 @@ CPythonEngine *CPythonEngine::get_singleton() {
 		PySys_SetArgv(1, n_argv);
 
 		print_line(vformat("Python interpreter version: %s on %s", Py_GetVersion(), Py_GetPlatform()));
-		print_line(vformat("Python standard library path: %s", Py_GetPath()));
+		print_verbose(vformat("Python standard library path: %s", Py_GetPath()));
+		print_verbose(vformat("Python settings: NoSiteFlag=%d, VerboseFlag=%d, DebugFlag=%d, OptimizeFlag=%d", Py_NoSiteFlag, Py_VerboseFlag, Py_DebugFlag, Py_OptimizeFlag));
 	}
 
 	return instance;
@@ -461,9 +462,17 @@ CPythonInstance::CPythonInstance() {
 	python_autorun = false;
 	python_data_hint = 2; // Module Name
 
+#ifdef DEBUG_ENABLED
+	Py_DebugFlag = 1;
+#else
 	Py_DebugFlag = 0;
+#endif
 	Py_VerboseFlag = 0;
-	Py_OptimizeFlag = true;
+#ifdef TOOLS_ENABLED
+	Py_OptimizeFlag = Engine::get_singleton()->is_editor_hint() ? 0 : 1;
+#else
+	Py_OptimizeFlag = 1;
+#endif
 }
 
 // Python utilities

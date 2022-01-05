@@ -294,7 +294,7 @@ static Ref<BitmapFont> make_font_from_hstrip(const String &p_font_path, const St
 	return font;
 }
 
-void GdFont::load(const std::string &path, int size, int outline_size, Color outline_color, int stretch) {
+bool GdFont::load(const std::string &path, int size, int outline_size, Color outline_color, int stretch) {
 	if (path.empty() || path == "_") {
 #ifdef MODULE_FREETYPE_ENABLED
 		font = _get_default_dynamic_font(size, outline_size, outline_color, stretch);
@@ -306,8 +306,7 @@ void GdFont::load(const std::string &path, int size, int outline_size, Color out
 		const String ext = String(path.c_str()).get_extension();
 		if (ext == "ttf" || ext == "otf") {
 #ifdef MODULE_FREETYPE_ENABLED
-			FileAccessRef fnt(FileAccess::open(path.c_str(), FileAccess::READ));
-			if (fnt) {
+			if (ResourceLoader::exists(path.c_str())) {
 				font = _get_dynamic_font(path, size, outline_size, outline_color, stretch);
 			} else {
 				WARN_PRINT("Failed to open font at: " + String(path.c_str()));
@@ -339,6 +338,7 @@ void GdFont::load(const std::string &path, int size, int outline_size, Color out
 			}
 		}
 	}
+	return font.is_valid();
 }
 
 // END

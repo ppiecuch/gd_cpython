@@ -361,10 +361,10 @@ ssize_t _gd_fwrite(const void* buf, size_t len, size_t cnt, PYFILE *f) {
 			}
 #endif
 		} else if (f == _gd_stdin()) {
-			WARN_PRINT("File handle should not be stdin - information lost.");
+			WARN_PRINT("Not supported: stdin.");
 			return 0;
 		} else {
-			WARN_PRINT("Undefined file access - information lost.");
+			WARN_PRINT("Undefined file access - text is lost.");
 			return 0;
 		}
 		return cnt * len;
@@ -416,14 +416,14 @@ void _gd_vfprintf(PYFILE *f, const char *format, va_list ap) {
 			}
 #endif
 		} else if (f == _gd_stdin()) {
-			WARN_PRINT("File handle should not be stdin - information lost.");
+			WARN_PRINT("Not supported: stdin.");
 		} else {
-			WARN_PRINT("Undefined file access - information lost.");
+			WARN_PRINT(vformat("Cannot handle (text: %s)", buffer));
 		}
 
 		memdelete_arr(buffer);
 	} else {
-		WARN_PRINT("File handle should not be null - information lost.");
+		WARN_PRINT("File handle should not be null - text is lost.");
 	}
 }
 
@@ -433,7 +433,7 @@ char *_gd_fgets(char* buf, size_t len, PYFILE *f) {
 		strncpy(buf, line, len);
 		return buf;
 	}
-	return 0;
+	return nullptr;
 }
 
 int _gd_fputs(const char* buf, PYFILE *f) {
@@ -441,13 +441,15 @@ int _gd_fputs(const char* buf, PYFILE *f) {
 		if (f->fa) {
 			f->fa->store_string(String(buf));
 		} else if (f == _gd_stdout()) {
-			fputs(buf, stdout);
+			if (OS::get_singleton()->is_stdout_verbose()) {
+				OS::get_singleton()->print("%s", buf);
+			}
 		} else if (f == _gd_stderr()) {
-			fputs(buf, stderr);
+			OS::get_singleton()->printerr("%s", buf);
 		} else if (f == _gd_stdin()) {
-			WARN_PRINT("File handle should not be stdin - information lost.");
+			WARN_PRINT("Not supported: stdin.");
 		} else {
-			WARN_PRINT("Undefined file access - information lost.");
+			WARN_PRINT(vformat("Cannot handle (text: %s)", buf));
 		}
 		return 1;
 	}
@@ -471,9 +473,9 @@ int _gd_putc(int ch, PYFILE *f) {
 		} else if (f == _gd_stderr()) {
 			fputc(ch, stderr);
 		} else if (f == _gd_stdin()) {
-			WARN_PRINT("File handle should not be stdin - information lost.");
+			WARN_PRINT("Not supported: stdin.");
 		} else {
-			WARN_PRINT("Undefined file access - information lost.");
+			WARN_PRINT(vformat("Undefined file access (text: %c)", ch));
 		}
 		return ch;
 	}

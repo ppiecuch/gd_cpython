@@ -466,7 +466,7 @@ struct GdFont {
 	GdFont(const std::string &path, int size, int outline_size, Color outline_color) { load(path, size, outline_size, outline_color); }
 	GdFont(const std::string &path, int size, int outline_size, const std::vector<uint8_t>& outline_color) { load(path, size, outline_size, vec_to_color(outline_color)); }
 
-	void load(const std::string &path, int size, int outline_size = 0, Color outline_color = Color(), int stretch = 0);
+	bool load(const std::string &path, int size, int outline_size = 0, Color outline_color = Color(), int stretch = 0);
 
 	_FORCE_INLINE_ GdSurface render(const std::string &text, bool alias, int color) {
 		return GdSurface(font, String(text.c_str()), Color::hex(color));

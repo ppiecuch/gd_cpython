@@ -935,12 +935,9 @@ eq_mtime(time_t t1, time_t t2)
    Doesn't set an exception. */
 
 static char *
-make_compiled_pathname(char *pathname, char *buf, size_t buflen)
+make_pycache_pathname(char *pathname, char *buf, size_t buflen)
 {
     char *begin = buf;
-
-    if (pathname && *pathname == '*') /* Manage virtual path */
-        pathname++;
     size_t len = strlen(pathname);
 
     const char *prefix = Py_GETENV("PYTHONPYCACHEPREFIX");
@@ -1288,7 +1285,7 @@ get_code_from_data(ZipImporter *self, int ispackage, int isbytecode,
         code = unmarshal_code(modpath, data, mtime);
     }
     else {
-        cpathname = make_compiled_pathname(modpath, buf, (size_t)MAXPATHLEN + 1);
+        cpathname = make_pycache_pathname(modpath, buf, (size_t)MAXPATHLEN + 1);
         if (cpathname != NULL &&
             (fpc = check_compiled_module(modpath, mtime, cpathname))) {
             code = read_compiled_module(cpathname, fpc);
