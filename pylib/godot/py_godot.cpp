@@ -11,6 +11,7 @@
 #include "core/version_hash.gen.h"
 #include "core/math/geometry.h"
 #include "core/os/os.h"
+#include "scene/2d/audio_stream_player_2d.h"
 #include "servers/visual_server.h"
 
 #include "pylib/godot/py_godot.h"
@@ -294,6 +295,66 @@ static Ref<BitmapFont> make_font_from_hstrip(const String &p_font_path, const St
 	return font;
 }
 
+static bool play_sound(Node *p_owner, Ref<AudioStream> p_sound) {
+	ERR_FAIL_NULL_V(p_owner, false);
+	ERR_FAIL_NULL_V(p_sound, false);
+
+	const int _initial = 2;
+	static Vector<AudioStreamPlayer2D*> _audios;
+
+	auto _create_stream = [](Node *_owner) {
+		if (AudioStreamPlayer2D *ply = memnew(AudioStreamPlayer2D)) {
+			_audios.push_back(ply);
+			_owner->add_child(ply);
+		} else {
+			WARN_PRINT("Failed to create AudioStreamPlayer2D");
+		}
+	};
+
+	auto _play_last_stream = [=](Ref<AudioStream> _sound) {
+		auto a = _audios.last();
+		a->set_stream(_sound);
+		a->play();
+#ifdef DEBUG_ENABLED
+		print_verbose(vformat("(PyGodot) Playing sample: %d from AudioStream: %d", _sound, _audios.find(a)));
+#endif
+	};
+
+	if (_audios.size() == 0) {
+		for (int c = 0; c < _initial; c++) {
+			_create_stream(p_owner);
+		}
+	}
+
+	for (auto a : _audios) {
+		if (a->is_playing()) {
+			if (a == _audios.last()) {
+				_create_stream(p_owner);
+				_play_last_stream(p_sound);
+				break;
+			} else {
+				continue;
+			}
+		} else {
+			a->set_stream(p_sound);
+			a->play();
+#ifdef DEBUG_ENABLED
+			print_verbose(vformat("(PyGodot) Playing sample: %d from AudioStream: %d", p_sound, _audios.find(a)));
+#endif
+			break;
+		}
+	}
+
+	return true;
+}
+
+
+void GdSound::set_volume(real_t vol) { }
+void GdSound::play(bool loop) { }
+void GdSound::fadeout(int fadetime) { }
+void GdSound::stop() { }
+
+
 bool GdFont::load(const std::string &path, int size, int outline_size, Color outline_color, int stretch) {
 	if (path.empty() || path == "_") {
 #ifdef MODULE_FREETYPE_ENABLED
@@ -379,6 +440,7 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 	m_utils.def("print_verbose", &utils::print_verbose);
 	m_utils.def("lin_ipol", &utils::lin_ipol, "value"_a, "a"_a, "b"_a, "begin"_a = 0, "end"_a = 1.0);
 	m_utils.def("get_instance_size", &utils::get_instance_size);
+	m_utils.def("quit", &utils::quit);
 	// gdgame.math
 	py::module m_math = m.def_submodule("math", "gdgame module with math definitions.");
 	m_math.def("sin", static_cast<real_t (*)(real_t)>(&Math::sin));
@@ -886,10 +948,6 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def("stop", &GdSound::stop)
 		.def("fadeout", &GdSound::fadeout)
 		.attr("__version__") = VERSION_FULL_CONFIG;
-	m_mixer.def("pre_init", [](int frequency=22050, int size=-16, int channels=2, int buffersize=4096) { });
-	m_mixer.def("init", []() { });
-	m_mixer.def("quit", []() { });
-	m_mixer.def("set_num_channels", [](int channels) { });
 	// gdgame.display
 	py::module m_display = m.def_submodule("display", "gdgame module to control the display window and screen.");
 	m_display.def("set_mode", [](const py::tuple &size) { });

@@ -19,6 +19,8 @@
 #include "core/math/rect2.h"
 #include "scene/2d/node_2d.h"
 #include "scene/2d/sprite.h"
+#include "scene/main/scene_tree.h"
+#include "scene/main/viewport.h"
 #include "scene/resources/texture.h"
 #include "scene/resources/font.h"
 #include "scene/resources/dynamic_font.h"
@@ -508,10 +510,10 @@ struct GdEvent {
 // Wrapper around Godot sound
 struct GdSound {
 	GdSound(const std::string &filename) { }
-	void set_volume(real_t vol) { }
-	void play(bool loop) { }
-	void fadeout(int fadetime) { }
-	void stop() { }
+	void set_volume(real_t vol);
+	void play(bool loop);
+	void fadeout(int fadetime);
+	void stop();
 };
 
 namespace utils {
@@ -547,6 +549,14 @@ namespace utils {
 			}
 		}
 		return std::make_tuple(0, 0);
+	}
+
+	bool quit() {
+		if (SceneTree *sc = SceneTree::get_singleton()) {
+			sc->quit(0);
+			return true;
+		}
+		return false;
 	}
 } // utils
 
