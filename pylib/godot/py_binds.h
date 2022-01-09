@@ -567,7 +567,10 @@ namespace event {
 
 namespace image {
 	_FORCE_INLINE_ GdSurface load(const std::string &filename) {
-		return GdSurface(String(filename.c_str()));
+		return GdSurface(filename.c_str());
+	}
+	_FORCE_INLINE_ bool exists(const std::string &filename) {
+		return ResourceLoader::exists(filename.c_str());
 	}
 } // image
 

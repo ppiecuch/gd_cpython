@@ -543,8 +543,11 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def(py::self / real_t())
 		.def(-py::self)
 		.def("get_tuple", [](const Vector2 &v) { return std::make_tuple(v.x, v.y); })
+		.def_static("from_tuple", [](const std::vector<real_t> &args) { return Vector2(args[0], args[1]); })
+		.def_property_readonly_static("ZERO", [](const py::object&) { return Vector2(); })
+		.def_property_readonly_static("ONE", [](const py::object&) { return Vector2(1,1); })
 		.def("__copy__", [](const Vector2 &v){ return Vector2(v); })
-		.def("__repr__", [](const Vector2 &v) { return std::str(v); })
+		.def("__repr__", [](const Vector2 &v) { return std::str(vformat("Vector2%s", v)); })
 		.def("__getitem__", [](const Vector2 &v, int index) { return v[index]; })
 		.attr("__version__") = VERSION_FULL_CONFIG;
 	py::class_<Vector2i>(m_core, "Vector2i")
@@ -563,8 +566,11 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def(py::self != py::self)
 		.def(-py::self)
 		.def("get_tuple", [](const Vector2i &v) { return std::make_tuple(v.x, v.y); })
+		.def_static("from_tuple", [](const std::vector<real_t> &args) { return Vector2i(args[0], args[1]); })
+		.def_property_readonly_static("ZERO", [](const py::object&) { return Vector2i(); })
+		.def_property_readonly_static("ONE", [](const py::object&) { return Vector2i(1,1); })
 		.def("__copy__", [](const Vector2i &v){ return Vector2i(v); })
-		.def("__repr__", [](const Vector2i &v) { return std::str(v); })
+		.def("__repr__", [](const Vector2i &v) { return std::str(vformat("Vector2i(%d, %d)", v.x, v.y)); })
 		.def("__getitem__", [](const Vector2i &v, int index) { return v[index]; })
 		.attr("__version__") = VERSION_FULL_CONFIG;
 	py::class_<Vector3>(m_core, "Vector3")
@@ -582,14 +588,15 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def(py::self / real_t())
 		.def(py::self == py::self)
 		.def(py::self != py::self)
-	.def(-py::self)
+		.def(-py::self)
 		.def("get_tuple", [](const Vector3 &v) { return std::make_tuple(v.x, v.y, v.z);})
 		.def("__copy__", [](const Vector3 &v){ return Vector3(v); })
-		.def("__repr__", [](const Vector3 &v) { return std::str(v);})
+		.def("__repr__", [](const Vector3 &v) { return std::str(vformat("Vector3%s", v));})
 		.def("__getitem__", [](const Vector3 &v, int index) { return v[index]; })
 		.attr("__version__") = VERSION_FULL_CONFIG;
 	py::class_<Rect2>(m_core, "Rect2")
 		.def(py::init<real_t, real_t, real_t, real_t>())
+		.def(py::init<const Point2&, const Size2&>())
 		.def("get_position", &Rect2::get_position)
 		.def("set_position", &Rect2::set_position)
 		.def_property("pos", &Rect2::get_position, &Rect2::set_position)
@@ -635,7 +642,7 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def_static("from_pos_size", [](const Vector2 &pos, const Size2 &size) { return Rect2(pos, size); })
 		.def("__and__", [](const Rect2 &rc1, const Rect2 &rc2){ return rc1.clip(rc2); })
 		.def("__copy__", [](const Rect2 &rc){ return Rect2(rc); })
-		.def("__repr__", [](const Rect2 &rc) { return std::str(rc); })
+		.def("__repr__", [](const Rect2 &rc) { return std::str(vformat("Rect2%s", rc)); })
 		.attr("__version__") = VERSION_FULL_CONFIG;
 	py::class_<Rect2i>(m_core, "Rect2i")
 		.def(py::init<real_t, real_t, real_t, real_t>())
@@ -724,10 +731,13 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def("get_width", &GdSurface::get_width)
 		.def("get_height", &GdSurface::get_height)
 		.def("get_size", &GdSurface::get_size)
+		.def_property_readonly("width", &GdSurface::get_width)
+		.def_property_readonly("height", &GdSurface::get_height)
+		.def_property_readonly("size", &GdSurface::get_size)
 		.def("fill", &GdSurface::fill)
-		.def("blit", overload_cast_<GdSurface&, const std::vector<real_t>&, const std::vector<real_t>&>()(&GdSurface::blit))
-		.def("blit", overload_cast_<GdSurface&, const std::vector<real_t>&>()(&GdSurface::blit))
-		.def("blit", overload_cast_<GdSurface&, const std::vector<real_t>&, const Rect2&>()(&GdSurface::blit))
+		.def("blit", overload_cast_<GdSurface&, const std::vector<real_t>&>()(&GdSurface::blit)) // pos
+		.def("blit", overload_cast_<GdSurface&, const std::vector<real_t>&, const std::vector<real_t>&>()(&GdSurface::blit)) // pos + rect
+		.def("blit", overload_cast_<GdSurface&, const std::vector<real_t>&, const Rect2&>()(&GdSurface::blit)) // pos + dest + rect
 		.def("__repr__", [](const GdSurface &s) {
 			switch(s.impl->get_surface_type()) {
 				case GdSurfaceImpl::DISPLAY_SURFACE: return std::str(vformat("GdSurface 0x%0x {DISPLAY_SURFACE}", int64_t(&s)));
@@ -963,6 +973,7 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 	// gdgame.image
 	py::module m_image = m.def_submodule("image", "gdgame module for image transfer.");
 	m_image.def("load", &image::load);
+	m_image.def("exists", &image::exists);
 	// gdgame.font
 	py::module m_font = m.def_submodule("font", "gdgame module for loading and rendering fonts.");
 	py::class_<GdFont>(m_font, "Font")
