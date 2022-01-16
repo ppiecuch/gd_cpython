@@ -24,6 +24,7 @@
 #include "scene/resources/texture.h"
 #include "scene/resources/font.h"
 #include "scene/resources/dynamic_font.h"
+#include "scene/resources/theme.h"
 #include "common/gd_core.h"
 
 #include <iostream>
@@ -587,10 +588,35 @@ namespace draw {
 		rect(surf, vec_to_color(c), geom, width);
 	}
 	_FORCE_INLINE_ void rect(const GdSurface &surf, const std::vector<uint8_t> &c, const std::vector<float> &geom, int width) {
+		ERR_FAIL_COND(geom.size()!=4);
 		rect(surf, vec_to_color(c), Rect2(geom[0], geom[1], geom[2], geom[3]), width);
 	}
 	_FORCE_INLINE_ void rect(const GdSurface &surf, int c, const Rect2 &geom, int width) {
 		rect(surf, Color::hex(c), geom, width);
+	}
+	_FORCE_INLINE_ void style_rect(const GdSurface &surf, const Color &color, const Rect2 &rect, int width, int radius, const Color &bg_color, int shadow_size, const Color &shadow_color, const Vector2 &shadow_offset) {
+		ERR_FAIL_COND(surf.get_surface_type() != GdSurfaceImpl::DISPLAY_SURFACE);
+		if (Node2D *canvas = Object::cast_to<Node2D>(surf.get_as_display()->instance)) {
+			static Ref<StyleBoxFlat> _style;
+			if (!_style) {
+				_style = newref(StyleBoxFlat);
+				_register_global_ref(_style);
+			}
+			_style->set_border_width_all(width);
+			_style->set_corner_radius_all(radius);
+			_style->set_bg_color(bg_color);
+			_style->set_shadow_size(shadow_size);
+			_style->set_shadow_color(shadow_color);
+			_style->set_shadow_offset(shadow_offset);
+			canvas->draw_style_box(_style, rect);
+		} else {
+			WARN_PRINT("Not an Node2D");
+		}
+	}
+	_FORCE_INLINE_ void style_rect(const GdSurface &surf, const std::vector<uint8_t> &color, const std::vector<float> &rect, int width, int radius, const std::vector<uint8_t> &bg_color, int shadow_size, const std::vector<uint8_t> &shadow_color, const std::vector<float> &shadow_offset) {
+		ERR_FAIL_COND(rect.size()!=4);
+		ERR_FAIL_COND(shadow_offset.size()!=2);
+		style_rect(surf, vec_to_color(color), Rect2(rect[0], rect[1], rect[2], rect[3]), width, radius, vec_to_color(bg_color), shadow_size, vec_to_color(shadow_color), Vector2(shadow_offset[0], shadow_offset[1]));
 	}
 } // draw
 

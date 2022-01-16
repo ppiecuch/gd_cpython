@@ -709,8 +709,9 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def_static("hex", &Color::hex)
 		.def_static("hex64", &Color::hex64)
 		.def_static("html", &Color::html)
-		.def_static("html_is_valid", &Color::html)
-		.def_static("named", &Color::html)
+		.def_static("html_is_valid", &Color::html_is_valid)
+		.def_static("named", &Color::named)
+		.def_static("named", [](const std::string &name){ return Color::named(name.c_str()); })
 		.def("to_html", &Color::to_html)
 		.def("from_hsv", &Color::from_hsv)
 		.def_static("from_abgr", &Color::from_abgr)
@@ -722,7 +723,7 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def(py::self *= real_t())
 		.def(py::self /= real_t())
 		.def("__copy__", [](const Color &c){ return Color(c); })
-		.def("__repr__", [](const Color &c) { return std::str(c);})
+		.def("__repr__", [](const Color &c) { return std::str(vformat("Color%s", c)); })
 		.def("__getitem__", [](const Color &c, int index) { return c[index]; })
 		.attr("__version__") = VERSION_FULL_CONFIG;
 	py::class_<GdSurface>(m, "Surface")
@@ -970,6 +971,8 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 	m_draw.def("rect", overload_cast_<const GdSurface&, const std::vector<uint8_t>&, const std::vector<float>&, int>()(&draw::rect));
 	m_draw.def("rect", overload_cast_<const GdSurface&, const std::vector<uint8_t>&, const Rect2&, int>()(&draw::rect));
 	m_draw.def("rect", overload_cast_<const GdSurface&, int, const Rect2&, int>()(&draw::rect));
+	m_draw.def("style_rect", overload_cast_<const GdSurface&, const Color&, const Rect2&, int, int, const Color&, int, const Color&, const Vector2&>()(&draw::style_rect), "surf"_a, "color"_a, "rect"_a, "width"_a = 3, "radius"_a = 4, "bg_color"_a = Color::named("lightyellow"), "shadow_size"_a = 2, "shadow_color"_a = Color::named("black"), "shadow_offset"_a = Vector2(2,2));
+	m_draw.def("style_rect", overload_cast_<const GdSurface&, const std::vector<uint8_t>&, const std::vector<float>&, int, int, const std::vector<uint8_t>&, int, const std::vector<uint8_t>&, const std::vector<float>&>()(&draw::style_rect), "surf"_a, "color"_a, "rect"_a, "width"_a = 3, "radius"_a = 4, "bg_color"_a = py::make_tuple(255,255,224), "shadow_size"_a = 2, "shadow_color"_a = py::make_tuple(0,0,0), "shadow_offset"_a = py::make_tuple(2,2));
 	// gdgame.image
 	py::module m_image = m.def_submodule("image", "gdgame module for image transfer.");
 	m_image.def("load", &image::load);
