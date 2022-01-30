@@ -165,6 +165,7 @@ struct GdTextSurface : public GdSurfaceImpl {
 
 struct GdTextureSurface : public GdSurfaceImpl {
 	Ref<Texture> texture;
+	real_t surf_alpha;
 
 	_FORCE_INLINE_ Type get_surface_type() const { return TEXTURE_SURFACE; }
 	_FORCE_INLINE_ int get_width() const { ERR_FAIL_NULL_V(texture, 1); return texture->get_width(); }
@@ -172,9 +173,10 @@ struct GdTextureSurface : public GdSurfaceImpl {
 
 	_FORCE_INLINE_ std::unique_ptr<GdSurfaceImpl> clone() const { return std::make_unique<GdTextureSurface>(texture); }
 
-	GdTextureSurface(const Ref<Texture> &texture) : texture(texture) { }
+	GdTextureSurface(const Ref<Texture> &texture) : texture(texture), surf_alpha(1) { }
 	GdTextureSurface(const String &filename) {
 		texture = ResourceLoader::load(filename, "Texture");
+		surf_alpha = 1;
 	}
 };
 
@@ -632,5 +634,10 @@ namespace display {
 		}
 	}
 } // display
+
+namespace network {
+	std::vector<uint64_t> get_peers();
+	std::string get_peer_name(uint64_t peer_id);
+} // network
 
 #endif // PY_BINDS_H

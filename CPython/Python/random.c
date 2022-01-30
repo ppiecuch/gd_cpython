@@ -10,7 +10,7 @@
 #endif
 #endif
 
-#ifdef _3DS
+#ifdef __3DS__
 #include "3ds/types.h"
 #include "3ds/result.h"
 #include "3ds/services/ps.h"
@@ -230,7 +230,7 @@ lcg_urandom(unsigned int x0, unsigned char *buffer, size_t size)
     }
 }
 
-#ifdef _3DS
+#ifdef __3DS__
 static int
 ctr_urandom_init(int raise)
 {
@@ -296,7 +296,7 @@ _PyOS_URandom(void *buffer, Py_ssize_t size)
     return vms_urandom((unsigned char *)buffer, size, 1);
 # elif defined(__VITA__)
      return sceKernelGetRandomNumber(buffer, size);
-# elif defined(_3DS)
+# elif defined(__3DS__)
      return ctr_urandom(buffer, size, raise);
 # else
     return dev_urandom_python((char*)buffer, size);
