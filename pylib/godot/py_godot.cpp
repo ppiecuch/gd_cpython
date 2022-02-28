@@ -746,6 +746,7 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 				case GdSurfaceImpl::TEXT_SURFACE: return std::str(vformat("GdSurface 0x%0x {TEXT_SURFACE, '%s'}", int64_t(&s), s.get_as_text()->text));
 				case GdSurfaceImpl::TEXTURE_SURFACE: return std::str(vformat("GdSurface 0x%0x {TEXTURE_SURFACE}", int64_t(&s)));
 			}
+			return std::str(vformat("GdSurface 0x%0x {Unknown type: %d}", int64_t(&s), s.impl->get_surface_type());
 		})
 		.attr("__version__") = VERSION_FULL_CONFIG;
 	// gdgame.info
