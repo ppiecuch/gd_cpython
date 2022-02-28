@@ -351,9 +351,13 @@ ssize_t _gd_fwrite(const void* buf, size_t len, size_t cnt, PYFILE *f) {
 		if (f->fa) {
 			f->fa->store_buffer((const uint8_t*)buf, cnt * len);
 		} else if (f == _gd_stdout()) {
-			return fwrite(buf, len, cnt, stdout);
+			if (OS::get_singleton()->is_stdout_verbose()) {
+				OS::get_singleton()->print("%s", buf);
+			}
+			return len * cnt;
 		} else if (f == _gd_stderr()) {
-			return fwrite(buf, len, cnt, stderr);
+			OS::get_singleton()->printerr("%s", buf);
+			return len * cnt;
 #ifdef PYSTDERR_TO_FILE
 			FileAccessRef log(FileAccess::open("py_stderr.txt", FileAccess::READ_WRITE));
 			if (log) {

@@ -369,7 +369,9 @@ int CPythonInstance::get_debug_level() const {
 }
 
 void CPythonInstance::set_verbose_level(int p_level) {
-	Py_VerboseFlag = p_level;
+	if (OS::get_singleton()->is_stdout_verbose()) {
+		Py_VerboseFlag = p_level;
+	}
 }
 
 int CPythonInstance::get_verbose_level() const {
