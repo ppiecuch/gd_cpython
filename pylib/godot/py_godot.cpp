@@ -7,8 +7,8 @@
 
 #include "core/rid.h"
 #include "core/variant.h"
+#include "core/version.h"
 #include "core/version_generated.gen.h"
-#include "core/version_hash.gen.h"
 #include "core/math/geometry.h"
 #include "core/os/os.h"
 #include "scene/2d/audio_stream_player_2d.h"
