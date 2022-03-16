@@ -500,7 +500,11 @@ struct GdEvent {
 	int type;
 	union {
 		struct {
-			Point2 position;
+			// to avoid problems with Point2 as part of the union
+			struct {
+				real_t x, y;
+				Point2 operator=(const Point2 &pt) { x = pt.x, y = pt.x; return pt; }
+			} position;
 			int button;
 		};
 		struct {
@@ -623,11 +627,12 @@ namespace draw {
 } // draw
 
 namespace display {
-	void set_caption(const std::string &caption) { }
+	void set_caption(const std::string &caption) { OS::get_singleton()->set_window_title(caption.c_str()); }
 	_FORCE_INLINE_ GdSurface get_surface(int instance_id) { return GdSurface(instance_id); }
 	_FORCE_INLINE_ void flip(int instance_id) {
 		if (Object *owner = ObjectDB::get_instance(instance_id)) {
 			if (Node2D *canvas = Object::cast_to<Node2D>(owner)) {
+				canvas->set_rotation_degrees(180);
 			} else {
 				WARN_PRINT("Not an Node2D");
 			}

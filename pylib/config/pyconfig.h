@@ -6,6 +6,15 @@
 # include <AvailabilityMacros.h>
 #endif
 
+/* Limited posix features on small/homebrew consoles */
+#if defined(__NX__) || defined(__3DS__) || defined(__psp2__) || defined(__psp__)
+# define LIMITED_POSIX
+#endif
+
+#if defined(__psp2__) || defined(__psp__)
+# define PSP
+#endif
+
 /* Visual Studio 2005 introduces deprecation warnings for
    "insecure" and POSIX functions. The insecure functions should
    be replaced by *_s versions (according to Microsoft); the
@@ -126,7 +135,7 @@
 #define DOUBLE_IS_LITTLE_ENDIAN_IEEE754 1
 
 /* Define if --enable-ipv6 is specified */
-#ifndef __NX__
+#ifndef LIMITED_POSIX
 #define ENABLE_IPV6 1
 #endif
 
@@ -147,7 +156,7 @@
 #define HAVE_ADDRINFO 1
 
 /* Define to 1 if you have the `alarm' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_ALARM 1
 #endif
 
@@ -200,12 +209,12 @@
 /* #undef HAVE_CHFLAGS */
 
 /* Define to 1 if you have the `chown' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_CHOWN 1
 #endif
 
 /* Define if you have the 'chroot' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_CHROOT 1
 #endif
 
@@ -213,7 +222,7 @@
 #define HAVE_CLOCK 1
 
 /* Define to 1 if you have the `confstr' function. */
-#if !defined(__ANDROID__) && !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(__ANDROID__) && !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_CONFSTR 1
 #endif
 
@@ -226,7 +235,7 @@
 #define HAVE_COPYSIGN 1
 
 /* Define to 1 if you have the `ctermid' function. */
-#if !defined(__ANDROID__) && !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(__ANDROID__) && !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_CTERMID 1
 #endif
 
@@ -264,17 +273,17 @@
 /* #undef HAVE_DECL_TZNAME */
 
 /* Define to 1 if you have the device macros. */
-#if !defined(__ANDROID__) && !defined(MS_WINDOWS)
+#if !defined(__ANDROID__) && !defined(MS_WINDOWS) && !defined(PSP)
 #define HAVE_DEVICE_MACROS 1
 #endif
 
 /* Define if we have /dev/ptc. */
-#if !defined(__APPLE__) && !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(__APPLE__) && !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_DEV_PTC
 #endif
 
 /* Define if we have /dev/ptmx. */
-#if !defined(__ANDROID__) && !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(__ANDROID__) && !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_DEV_PTMX 1
 #endif
 
@@ -296,7 +305,9 @@
 /* #define HAVE_DLOPEN 1 */
 
 /* Define to 1 if you have the `dup2' function. */
+#ifndef LIMITED_POSIX
 #define HAVE_DUP2 1
+#endif
 
 /* Defined when any dynamic module loading is enabled. */
 /* #define HAVE_DYNAMIC_LOADING 1 */
@@ -314,7 +325,7 @@
 #define HAVE_ERRNO_H 1
 
 /* Define to 1 if you have the `execv' function. */
-#ifndef __NX__
+#ifndef LIMITED_POSIX
 #define HAVE_EXECV 1
 #endif
 
@@ -322,17 +333,17 @@
 #define HAVE_EXPM1 1
 
 /* Define if you have the 'fchdir' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_FCHDIR 1
 #endif
 
 /* Define to 1 if you have the `fchmod' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_FCHMOD 1
 #endif
 
 /* Define to 1 if you have the `fchown' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_FCHOWN 1
 #endif
 
@@ -351,12 +362,12 @@
 #define HAVE_FINITE 1
 
 /* Define to 1 if you have the `flock' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_FLOCK 1
 #endif
 
 /* Define to 1 if you have the `fork' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_FORK 1
 #endif
 
@@ -368,7 +379,7 @@
 #endif
 
 /* Define to 1 if you have the `fpathconf' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_FPATHCONF 1
 #endif
 
@@ -379,7 +390,7 @@
 #define HAVE_FSEEKO 1
 
 /* Define if you have the 'fsync' function. */
-#ifndef __NX__
+#ifndef LIMITED_POSIX
 #define HAVE_FSYNC 1
 #endif
 
@@ -400,7 +411,9 @@
 #endif
 
 /* Define to 1 if you have the `gai_strerror' function. */
+#ifndef PSP
 #define HAVE_GAI_STRERROR 1
+#endif
 
 /* Define to 1 if you have the `gamma' function. */
 #define HAVE_GAMMA 1
@@ -443,22 +456,24 @@
 /* #undef HAVE_GETHOSTBYNAME_R_6_ARG */
 
 /* Define to 1 if you have the `getitimer' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_GETITIMER 1
 #endif
 
 /* Define to 1 if you have the `getloadavg' function. */
-#if !defined(__ANDROID__) && !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(__ANDROID__) && !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_GETLOADAVG 1
 #endif
 
 /* Define to 1 if you have the `getlogin' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_GETLOGIN 1
 #endif
 
 /* Define to 1 if you have the `getnameinfo' function. */
+#if !defined(PSP)
 #define HAVE_GETNAMEINFO 1
+#endif
 
 /* Define if you have the 'getpagesize' function. */
 #define HAVE_GETPAGESIZE 1
@@ -492,7 +507,7 @@
 /* #undef HAVE_GETRESUID */
 
 /* Define to 1 if you have the `getsid' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_GETSID 1
 #endif
 
@@ -518,7 +533,7 @@
 #endif
 
 /* Define if you have the 'hstrerror' function. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(PSP)
 #define HAVE_HSTRERROR 1
 #endif
 
@@ -542,7 +557,7 @@
 #define HAVE_INET_PTON 1
 
 /* Define to 1 if you have the `initgroups' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_INITGROUPS 1
 #endif
 
@@ -555,12 +570,12 @@
 #endif
 
 /* Define to 1 if you have the `kill' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_KILL 1
 #endif
 
 /* Define to 1 if you have the `killpg' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_KILLPG 1
 #endif
 
@@ -585,8 +600,8 @@
  and long long is available and at least as big as an off_t. You may need to
  add some flags for configuration and compilation to enable this mode. (For
  Solaris and Linux, the necessary defines are already defined.) */
-#ifdef __LP64__
-/* #undef HAVE_LARGEFILE_SUPPORT */
+#if defined(__LP64__) || defined(__3DS__) || defined(PSP)
+#undef HAVE_LARGEFILE_SUPPORT
 #else
 #define HAVE_LARGEFILE_SUPPORT 1
 #endif
@@ -595,7 +610,7 @@
 /* #undef HAVE_LCHFLAGS */
 
 /* Define to 1 if you have the `lchmod' function. */
-#if !defined(__ANDROID__) && !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(__ANDROID__) && !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_LCHMOD 1
 #endif
 
@@ -652,7 +667,7 @@
 #define HAVE_LONG_LONG 1
 
 /* Define to 1 if you have the `lstat' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_LSTAT 1
 #endif
 
@@ -668,12 +683,12 @@
 #define HAVE_MEMORY_H 1
 
 /* Define to 1 if you have the `mkfifo' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_MKFIFO 1
 #endif
 
 /* Define to 1 if you have the `mknod' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_MKNOD 1
 #endif
 
@@ -693,7 +708,7 @@
 /* #undef HAVE_NETPACKET_PACKET_H */
 
 /* Define to 1 if you have the `nice' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_NICE 1
 #endif
 
@@ -706,12 +721,12 @@
 #define HAVE_OSX105_SDK 1
 
 /* Define to 1 if you have the `pathconf' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_PATHCONF 1
 #endif
 
 /* Define to 1 if you have the `pause' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_PAUSE 1
 #endif
 
@@ -756,12 +771,12 @@
 #define HAVE_PUTENV 1
 
 /* Define to 1 if you have the `readlink' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_READLINK 1
 #endif
 
 /* Define to 1 if you have the `realpath' function. */
-#ifndef __NX__
+#ifndef LIMITED_POSIX
 #define HAVE_REALPATH 1
 #endif
 
@@ -807,27 +822,27 @@
 #define HAVE_SEM_UNLINK 1
 
 /* Define to 1 if you have the `setegid' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_SETEGID 1
 #endif
 
 /* Define to 1 if you have the `seteuid' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_SETEUID 1
 #endif
 
 /* Define to 1 if you have the `setgid' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_SETGID 1
 #endif
 
 /* Define if you have the 'setgroups' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_SETGROUPS 1
 #endif
 
 /* Define to 1 if you have the `setitimer' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_SETITIMER 1
 #endif
 
@@ -835,17 +850,17 @@
 #define HAVE_SETLOCALE 1
 
 /* Define to 1 if you have the `setpgid' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_SETPGID 1
 #endif
 
 /* Define to 1 if you have the `setpgrp' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_SETPGRP 1
 #endif
 
 /* Define to 1 if you have the `setregid' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_SETREGID 1
 #endif
 
@@ -856,17 +871,17 @@
 /* #undef HAVE_SETRESUID */
 
 /* Define to 1 if you have the `setreuid' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_SETREUID 1
 #endif
 
 /* Define to 1 if you have the `setsid' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_SETSID 1
 #endif
 
 /* Define to 1 if you have the `setuid' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_SETUID 1
 #endif
 
@@ -877,12 +892,12 @@
 /* #undef HAVE_SHADOW_H */
 
 /* Define to 1 if you have the `sigaction' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_SIGACTION 1
 #endif
 
 /* Define to 1 if you have the `siginterrupt' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_SIGINTERRUPT 1
 #endif
 
@@ -904,7 +919,7 @@
 #define HAVE_SOCKADDR_STORAGE 1
 
 /* Define if you have the 'socketpair' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_SOCKETPAIR 1
 #endif
 
@@ -925,7 +940,7 @@ typedef _W64 int ssize_t;
 #ifdef __APPLE__
 /* Define if you have struct stat.st_mtimensec */
 #define HAVE_STAT_TV_NSEC2 1
-#elif !defined(MS_WINDOWS)
+#elif !defined(MS_WINDOWS) && !defined(PSP)
 /* Define if you have struct stat.st_mtim.tv_nsec */
 # define HAVE_STAT_TV_NSEC
 #endif /* __APPLE__ */
@@ -989,24 +1004,26 @@ typedef _W64 int ssize_t;
 #define HAVE_STRUCT_STAT_ST_RDEV 1
 
 /* Define to 1 if `tm_zone' is a member of `struct tm'. */
+#ifndef PSP
 #define HAVE_STRUCT_TM_TM_ZONE 1
+#endif
 
 /* Define to 1 if your `struct stat' has `st_blocks'. Deprecated, use
  `HAVE_STRUCT_STAT_ST_BLOCKS' instead. */
 #define HAVE_ST_BLOCKS 1
 
 /* Define if you have the 'symlink' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_SYMLINK 1
 #endif
 
 /* Define to 1 if you have the `sysconf' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_SYSCONF 1
 #endif
 
 /* Define to 1 if you have the <sysexits.h> header file. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(PSP)
 #define HAVE_SYSEXITS_H 1
 #endif
 
@@ -1055,7 +1072,7 @@ typedef _W64 int ssize_t;
 #endif
 
 /* Define to 1 if you have the <sys/poll.h> header file. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(PSP)
 #define HAVE_SYS_POLL_H 1
 #endif
 
@@ -1095,12 +1112,12 @@ typedef _W64 int ssize_t;
 #define HAVE_SYS_TYPES_H 1
 
 /* Define to 1 if you have the <sys/un.h> header file. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(PSP)
 #define HAVE_SYS_UN_H 1
 #endif
 
 /* Define to 1 if you have the <sys/utsname.h> header file. */
-#ifndef MS_WINDOWS
+#if !defined(MS_WINDOWS) && !defined(PSP)
 #define HAVE_SYS_UTSNAME_H 1
 #endif
 
@@ -1110,12 +1127,12 @@ typedef _W64 int ssize_t;
 #endif
 
 /* Define to 1 if you have the `tcgetpgrp' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_TCGETPGRP 1
 #endif
 
 /* Define to 1 if you have the `tcsetpgrp' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_TCSETPGRP 1
 #endif
 
@@ -1177,7 +1194,7 @@ typedef _W64 int ssize_t;
 #define HAVE_UINTPTR_T 1
 
 /* Define to 1 if you have the `uname' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_UNAME 1
 #endif
 
@@ -1212,17 +1229,17 @@ typedef _W64 int ssize_t;
 #endif
 
 /* Define to 1 if you have the `wait3' function. */
-#if !defined(__ANDROID__) && !defined(MS_WINDOWS)  && !defined(__NX__)
+#if !defined(__ANDROID__) && !defined(MS_WINDOWS)  && !defined(LIMITED_POSIX)
 #define HAVE_WAIT3 1
 #endif
 
 /* Define to 1 if you have the `wait4' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_WAIT4 1
 #endif
 
 /* Define to 1 if you have the `waitpid' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_WAITPID 1
 #endif
 
@@ -1285,7 +1302,7 @@ typedef _W64 int ssize_t;
 /* #undef POSIX_SEMAPHORES_NOT_ENABLED */
 
 /* Defined if PTHREAD_SCOPE_SYSTEM supported. */
-#ifndef __NX__
+#ifndef LIMITED_POSIX
 #define PTHREAD_SYSTEM_SCHED_SUPPORTED 1
 #endif
 
@@ -1330,32 +1347,60 @@ typedef _W64 int ssize_t;
 /* #undef SIGNED_RIGHT_SHIFT_ZERO_FILLS */
 
 /* The size of `double', as computed by sizeof. */
-#define SIZEOF_DOUBLE 8
+#ifdef __SIZEOF_DOUBLE__
+#define SIZEOF_DOUBLE __SIZEOF_DOUBLE__
+#else
+#define SIZEOF_DOUBLE sizeof(double)
+#endif
 
 /* The size of `float', as computed by sizeof. */
-#define SIZEOF_FLOAT 4
+#ifdef __SIZEOF_FLOAT__
+#define SIZEOF_FLOAT __SIZEOF_FLOAT__
+#else
+#define SIZEOF_FLOAT sizeof(float)
+#endif
 
 /* The size of `fpos_t', as computed by sizeof. */
 #define SIZEOF_FPOS_T 8
 
 /* The size of `int', as computed by sizeof. */
-#define SIZEOF_INT 4
+#ifdef __SIZEOF_INT__
+#define SIZEOF_INT __SIZEOF_INT__
+#else
+#define SIZEOF_INT sizeof(int)
+#endif
 
 /* The size of `long', as computed by sizeof. */
+#ifdef __SIZEOF_LONG__
+#define SIZEOF_LONG __SIZEOF_LONG__
+#else
 #ifdef __LP64__
 #define SIZEOF_LONG 8
 #else
-#define SIZEOF_LONG 4
+#define SIZEOF_LONG sizeof(long)
+#endif
 #endif
 
 /* The size of `long double', as computed by sizeof. */
-#define SIZEOF_LONG_DOUBLE 16
+#ifdef __SIZEOF_LONG_DOUBLE__
+#define SIZEOF_LONG_DOUBLE __SIZEOF_LONG_DOUBLE__
+#else
+#define SIZEOF_LONG_DOUBLE sizeof(long double)
+#endif
 
 /* The size of `long long', as computed by sizeof. */
-#define SIZEOF_LONG_LONG 8
+#ifdef __SIZEOF_LONG_LONG__
+#define SIZEOF_LONG_LONG __SIZEOF_LONG_LONG__
+#else
+#define SIZEOF_LONG_LONG sizeof(long long)
+#endif
 
 /* The size of `off_t', as computed by sizeof. */
+#ifdef __LP64__
 #define SIZEOF_OFF_T 8
+#else
+#define SIZEOF_OFF_T 4
+#endif
 
 /* The size of `pid_t', as computed by sizeof. */
 #define SIZEOF_PID_T 4
@@ -1368,7 +1413,11 @@ typedef _W64 int ssize_t;
 #endif
 
 /* The size of `short', as computed by sizeof. */
-#define SIZEOF_SHORT 2
+#ifdef __SIZEOF_SHORT__
+#define SIZEOF_SHORT __SIZEOF_SHORT__
+#else
+#define SIZEOF_SHORT sizeof(short)
+#endif
 
 /* The size of `size_t', as computed by sizeof. */
 #ifdef __LP64__
@@ -1395,11 +1444,19 @@ typedef _W64 int ssize_t;
 #if defined(__LP64__) || defined(MS_WIN64)
 #define SIZEOF_VOID_P 8
 #else
-#define SIZEOF_VOID_P 4
+#ifdef __SIZEOF_POINTER__
+#define SIZEOF_VOID_P __SIZEOF_POINTER__
+#else
+#define SIZEOF_VOID_P sizeof(void*)
+#endif
 #endif
 
 /* The size of `wchar_t', as computed by sizeof. */
-#define SIZEOF_WCHAR_T 4
+#ifdef __SIZEOF_WCHAR_T__
+#define SIZEOF_WCHAR_T __SIZEOF_WCHAR_T__
+#else
+#define SIZEOF_WCHAR_T sizeof(wchar_t)
+#endif
 
 /* The size of `_Bool', as computed by sizeof. */
 #define SIZEOF__BOOL 1

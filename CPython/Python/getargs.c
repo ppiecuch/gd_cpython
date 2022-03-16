@@ -543,6 +543,7 @@ converterr(const char *expected, PyObject *arg, char *msgbuf, size_t bufsize)
 
 /* explicitly check for float arguments when integers are expected.  For now
  * signal a warning.  Returns true if an exception was raised. */
+#ifdef HAVE_LONG_LONG
 static int
 float_argument_warning(PyObject *arg)
 {
@@ -553,6 +554,7 @@ float_argument_warning(PyObject *arg)
     else
         return 0;
 }
+#endif
 
 /* explicitly check for float arguments when integers are expected.  Raises
    TypeError and returns true for float arguments. */

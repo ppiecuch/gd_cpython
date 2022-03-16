@@ -5186,10 +5186,10 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
                         generators = asdl_seq_new(len, arena);
                         if (generators == NULL) goto failed;
                         for (i = 0; i < len; i++) {
-                                comprehension_ty value;
-                                res = obj2ast_comprehension(PyList_GET_ITEM(tmp, i), &value, arena);
+                                comprehension_ty v;
+                                res = obj2ast_comprehension(PyList_GET_ITEM(tmp, i), &v, arena);
                                 if (res != 0) goto failed;
-                                asdl_seq_SET(generators, i, value);
+                                asdl_seq_SET(generators, i, v);
                         }
                         Py_XDECREF(tmp);
                         tmp = NULL;

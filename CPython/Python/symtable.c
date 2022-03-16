@@ -977,8 +977,8 @@ error:
     int i; \
     asdl_seq *seq = (SEQ); /* avoid variable capture */ \
     for (i = (START); i < asdl_seq_LEN(seq); i++) { \
-        TYPE ## _ty elt = (TYPE ## _ty)asdl_seq_GET(seq, i); \
-        if (!symtable_visit_ ## TYPE((ST), elt)) \
+        TYPE ## _ty _elt = (TYPE ## _ty)asdl_seq_GET(seq, i); \
+        if (!symtable_visit_ ## TYPE((ST), _elt)) \
             return 0; \
     } \
 }
@@ -987,8 +987,8 @@ error:
     int i; \
     asdl_seq *seq = (SEQ); /* avoid variable capture */ \
     for (i = (START); i < asdl_seq_LEN(seq); i++) { \
-        TYPE ## _ty elt = (TYPE ## _ty)asdl_seq_GET(seq, i); \
-        if (!symtable_visit_ ## TYPE((ST), elt)) { \
+        TYPE ## _ty _elt = (TYPE ## _ty)asdl_seq_GET(seq, i); \
+        if (!symtable_visit_ ## TYPE((ST), _elt)) { \
             symtable_exit_block((ST), (S)); \
             return 0; \
         } \

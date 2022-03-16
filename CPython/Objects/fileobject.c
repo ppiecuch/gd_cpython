@@ -2492,7 +2492,7 @@ PyFile_WriteObject(PyObject *v, PyObject *f, int flags)
         PyFileObject *fobj = (PyFileObject *) f;
 #ifdef Py_USING_UNICODE
         PyObject *enc = fobj->f_encoding;
-        int result;
+        int res;
 #endif
         if (fobj->f_fp == NULL) {
             err_closed();
@@ -2511,9 +2511,9 @@ PyFile_WriteObject(PyObject *v, PyObject *f, int flags)
             value = v;
             Py_INCREF(value);
         }
-        result = file_PyObject_Print(value, fobj, flags);
+        res = file_PyObject_Print(value, fobj, flags);
         Py_DECREF(value);
-        return result;
+        return res;
 #else
         return file_PyObject_Print(v, fobj, flags);
 #endif

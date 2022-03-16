@@ -334,7 +334,7 @@ PyUnicodeObject *_PyUnicode_New(Py_ssize_t length)
             size_t new_size = sizeof(Py_UNICODE) * ((size_t)length + 1);
             unicode->str = (Py_UNICODE*) PyObject_MALLOC(new_size);
         }
-        PyObject_INIT(unicode, &PyUnicode_Type);
+        (void) PyObject_INIT(unicode, &PyUnicode_Type);
     }
     else {
         size_t new_size;
@@ -664,7 +664,6 @@ PyUnicode_FromFormatV(const char *format, va_list vargs)
     int precision = 0;
     int zeropad;
     const char* f;
-    Py_UNICODE *s;
     PyObject *string;
     /* used by sprintf */
     char buffer[21];
@@ -847,7 +846,7 @@ PyUnicode_FromFormatV(const char *format, va_list vargs)
     if (!string)
         goto fail;
 
-    s = PyUnicode_AS_UNICODE(string);
+    Py_UNICODE *s = PyUnicode_AS_UNICODE(string);
     callresult = callresults;
 
     for (f = format; *f; f++) {
@@ -1381,7 +1380,7 @@ int PyUnicode_SetDefaultEncoding(const char *encoding)
     Py_DECREF(v);
     strncpy(unicode_default_encoding,
             encoding,
-            sizeof(unicode_default_encoding));
+            sizeof(unicode_default_encoding)-1);
     return 0;
 
   onError:
@@ -4569,8 +4568,8 @@ int charmap_encoding_error(
     while (collendpos < size) {
         PyObject *rep;
         if (Py_TYPE(mapping) == &EncodingMapType) {
-            int res = encoding_map_lookup(p[collendpos], mapping);
-            if (res != -1)
+            int ret = encoding_map_lookup(p[collendpos], mapping);
+            if (ret != -1)
                 break;
             ++collendpos;
             continue;

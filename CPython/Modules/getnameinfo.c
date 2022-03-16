@@ -96,7 +96,6 @@ getnameinfo(sa, salen, host, hostlen, serv, servlen, flags)
     int flags;
 {
     struct gni_afd *gni_afd;
-    struct servent *sp;
     struct hostent *hp;
     u_short port;
     int family, len, i;
@@ -104,8 +103,8 @@ getnameinfo(sa, salen, host, hostlen, serv, servlen, flags)
     u_long v4a;
 #ifdef ENABLE_IPV6
     u_char pfx;
-#endif
     int h_error;
+#endif
     char numserv[512];
     char numaddr[512];
 
@@ -142,7 +141,7 @@ getnameinfo(sa, salen, host, hostlen, serv, servlen, flags)
         strcpy(serv, numserv);
     } else {
 #ifndef __psp2__
-        sp = getservbyport(port, (flags & NI_DGRAM) ? "udp" : "tcp");
+        struct servent *sp = getservbyport(port, (flags & NI_DGRAM) ? "udp" : "tcp");
         if (sp) {
             if (strlen(sp->s_name) > servlen)
                 return ENI_MEMORY;
@@ -181,11 +180,9 @@ getnameinfo(sa, salen, host, hostlen, serv, servlen, flags)
     } else {
 #ifdef ENABLE_IPV6
         hp = getipnodebyaddr(addr, gni_afd->a_addrlen, gni_afd->a_af, &h_error);
+        h_error = h_errno;
 #else
         hp = gethostbyaddr(addr, gni_afd->a_addrlen, gni_afd->a_af);
-#ifndef __psp2__
-       h_error = h_errno;
-#endif
 #endif
 
         if (hp) {

@@ -229,13 +229,13 @@ complex_subtype_from_c_complex(PyTypeObject *type, Py_complex cval)
 PyObject *
 PyComplex_FromCComplex(Py_complex cval)
 {
-    register PyComplexObject *op;
+    PyComplexObject *op;
 
     /* Inline PyObject_New */
     op = (PyComplexObject *) PyObject_MALLOC(sizeof(PyComplexObject));
     if (op == NULL)
         return PyErr_NoMemory();
-    PyObject_INIT(op, &PyComplex_Type);
+    (void) PyObject_INIT(op, &PyComplex_Type);
     op->cval = cval;
     return (PyObject *) op;
 }

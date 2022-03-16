@@ -230,7 +230,7 @@ _Py_Mangle(PyObject *privateobj, PyObject *ident)
     /* ident = "_" + p[:plen] + name # i.e. 1+plen+nlen bytes */
     buffer = PyString_AS_STRING(ident);
     buffer[0] = '_';
-    strncpy(buffer+1, p, plen);
+    strncpy(buffer+1, p, plen+1);
     strcpy(buffer+1+plen, name);
     return ident;
 }

@@ -5,6 +5,8 @@ import platform
 Import("env")
 Import("env_modules")
 
+is_gcc = "gcc" in os.path.basename(env["CC"])
+
 search_paths = ["#modules/gdextensions", ".", "pylib", "pylib/config", "pylib/include", "CPython/Include", "CPython/Godot"]
 defines = ["GD_PYTHON", "_CRT_SECURE_NO_WARNINGS"]
 if env["platform"] == "windows":
@@ -18,6 +20,8 @@ if (env["platform"] == "android" and not env["android_rtti"]) or (env["platform"
 	env_module.Append(CPPFLAGS=["-frtti", "-fexceptions"])
 if env["builtin_freetype"]:
     env_module.Prepend(CPPPATH=["#thirdparty/freetype/include"])
+if is_gcc:
+	env_module.Append(CPPFLAGS=["-Wno-stringop-overflow"])
 
 env_glue_module = env_modules.Clone()
 env_glue_module.Append(CPPPATH=search_paths)

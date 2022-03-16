@@ -692,7 +692,7 @@ read_directory(char *archive)
     long i, l, count;
     size_t length;
     char path[MAXPATHLEN + 5];
-    char name[MAXPATHLEN + 5];
+    char name[MAXPATHLEN];
     char *p, endof_central_dir[22];
     long arc_offset; /* offset from beginning of file to start of zip-archive */
 
@@ -773,7 +773,7 @@ read_directory(char *archive)
         *p = 0;         /* Add terminating null byte */
         header_offset += header_size;
 
-        strncpy(path + length + 1, name, MAXPATHLEN - length - 1);
+        strncpy(path + length + 1, name, MAXPATHLEN - length);
 
         t = Py_BuildValue("siiiiiii", path, compress, data_size,
                           file_size, file_offset, time, date, crc);

@@ -2907,9 +2907,15 @@ done:
         return NULL;
     if (arg == Py_None) {
         /* optional time values not given */
+#ifdef HAVE_UTIMES
+        Py_BEGIN_ALLOW_THREADS
+        res = utimes(path, NULL);
+        Py_END_ALLOW_THREADS
+#else
         Py_BEGIN_ALLOW_THREADS
         res = utime(path, NULL);
         Py_END_ALLOW_THREADS
+#endif
     }
     else if (!PyTuple_Check(arg) || PyTuple_Size(arg) != 2) {
         PyErr_SetString(PyExc_TypeError,

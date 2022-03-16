@@ -542,6 +542,7 @@ set_error(void)
 }
 
 
+#if  !defined(RISCOS) && !defined(__psp2__) && !defined(__psp__)
 static PyObject *
 set_herror(int h_error)
 {
@@ -559,7 +560,7 @@ set_herror(int h_error)
 
     return NULL;
 }
-
+#endif
 
 static PyObject *
 set_gaierror(int error)
@@ -3177,13 +3178,17 @@ static PyTypeObject sock_type = {
 static PyObject *
 socket_gethostname(PyObject *self, PyObject *unused)
 {
-    char buf[1024];
-    int res;
 #if defined(__psp2__)
      return PyString_FromString("vita");
+#elif defined(__psp__)
+     return PyString_FromString("psp");
+#elif defined(__3DS__)
+     return PyString_FromString("3ds");
 #elif defined(__NX__)
      return PyString_FromString("nx");
 #else
+    char buf[1024];
+    int res;
     Py_BEGIN_ALLOW_THREADS
     res = gethostname(buf, (int) sizeof buf - 1);
     Py_END_ALLOW_THREADS
@@ -3235,10 +3240,10 @@ gethost_common(struct hostent *h, struct sockaddr *addr, int alen, int af)
 
     if (h == NULL) {
         /* Let's get real error message to return */
-#if !defined(RISCOS) && !defined(__psp2__)
-        set_herror(h_errno);
-#else
+#if defined(RISCOS) || defined(__psp2__) || defined(__psp__)
         PyErr_SetString(socket_error, "host not found");
+#else
+        (void) set_herror(h_errno);
 #endif
         return NULL;
     }
@@ -3566,14 +3571,14 @@ otherwise any protocol will match.");
 static PyObject *
 socket_getservbyport(PyObject *self, PyObject *args)
 {
+#if defined(__NX__) || defined(__psp2__) || defined(__psp__)
+    /* Not available yet. - [cjh] */
+    PyErr_SetString(socket_error, "getservbyport not supported");
+    return NULL;
+#else
     int port;
     char *proto=NULL;
     struct servent *sp;
-#if defined(__NX__)
-/* Not available yet. - [cjh] */
-    PyErr_SetString(socket_error, "getservbyport not supported");
-    return NULL;
-#endif
     if (!PyArg_ParseTuple(args, "i|s:getservbyport", &port, &proto))
         return NULL;
     if (port < 0 || port > 0xffff) {
@@ -3590,6 +3595,7 @@ socket_getservbyport(PyObject *self, PyObject *args)
         return NULL;
     }
     return PyString_FromString(sp->s_name);
+#endif
 }
 
 PyDoc_STRVAR(getservbyport_doc,
@@ -3607,13 +3613,13 @@ otherwise any protocol will match.");
 static PyObject *
 socket_getprotobyname(PyObject *self, PyObject *args)
 {
-    char *name;
-    struct protoent *sp;
 #if defined(__BEOS__) || defined(__psp2__) || defined(__NX__)
 /* Not available yet. - [cjh] */
     PyErr_SetString(socket_error, "getprotobyname not supported");
     return NULL;
 #else
+    char *name;
+    struct protoent *sp;
     if (!PyArg_ParseTuple(args, "s:getprotobyname", &name))
         return NULL;
     Py_BEGIN_ALLOW_THREADS
