@@ -500,10 +500,10 @@ struct GdEvent {
 	int type;
 	union {
 		struct {
-			// to avoid problems with Point2 as part of the union
+			// to avoid gcc problems with Point2 as part of the union
 			struct {
 				real_t x, y;
-				Point2 operator=(const Point2 &pt) { x = pt.x, y = pt.x; return pt; }
+				void operator=(const Point2 &pt) { x = pt.x, y = pt.x; }
 			} position;
 			int button;
 		};
