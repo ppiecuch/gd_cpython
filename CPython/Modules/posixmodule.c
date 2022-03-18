@@ -230,6 +230,10 @@ extern int lstat(const char *, struct stat *);
 
 #ifdef HAVE_UTIME_H
 #include <utime.h>
+#ifdef PSP
+/* missing definition for dummy placeholder */
+int utime(const char *path, const struct utimbuf *times);
+#endif
 #endif /* HAVE_UTIME_H */
 
 #ifdef HAVE_SYS_UTIME_H
