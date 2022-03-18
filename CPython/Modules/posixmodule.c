@@ -142,7 +142,7 @@ corresponding Unix manual entries for more information on calls.");
 #define HAVE_FSYNC      1
 #define fsync _commit
 #else
-#if defined(PYOS_OS2) && defined(PYCC_GCC) || defined(__VMS) || defined(__NX__)
+#if defined(PYOS_OS2) && defined(PYCC_GCC) || defined(__VMS) || defined(LIMITED_POSIX)
 /* Everything needed is defined in PC/os2emx/pyconfig.h or vms/pyconfig.h */
 #else                   /* all other compilers */
 /* Unix functions that the configure script doesn't check for */
@@ -687,6 +687,7 @@ os2_error(int code)
 
 /* POSIX generic methods */
 
+#if defined(HAVE_FCHDIR) || defined(HAVE_FSYNC) || defined(HAVE_FDATASYNC)
 static PyObject *
 posix_fildes(PyObject *fdobj, int (*func)(int))
 {
@@ -705,6 +706,7 @@ posix_fildes(PyObject *fdobj, int (*func)(int))
     Py_INCREF(Py_None);
     return Py_None;
 }
+#endif
 
 static PyObject *
 posix_1str(PyObject *args, char *format, int (*func)(const char*))
@@ -6556,6 +6558,7 @@ posix_dup(PyObject *self, PyObject *args)
 }
 
 
+#ifdef HAVE_DUP2
 PyDoc_STRVAR(posix_dup2__doc__,
 "dup2(old_fd, new_fd)\n\n\
 Duplicate file descriptor.");
@@ -6576,7 +6579,7 @@ posix_dup2(PyObject *self, PyObject *args)
     Py_INCREF(Py_None);
     return Py_None;
 }
-
+#endif
 
 PyDoc_STRVAR(posix_lseek__doc__,
 "lseek(fd, pos, how) -> newpos\n\n\
@@ -7505,6 +7508,7 @@ struct constdef {
     long value;
 };
 
+#if defined(HAVE_CONFSTR) || defined(HAVE_FPATHCONF) || defined(HAVE_PATHCONF)
 static int
 conv_confname(PyObject *arg, int *valuep, struct constdef *table,
               size_t tablesize)
@@ -7539,6 +7543,7 @@ conv_confname(PyObject *arg, int *valuep, struct constdef *table,
                         "configuration names must be strings or integers");
     return 0;
 }
+#endif
 
 
 #if defined(HAVE_FPATHCONF) || defined(HAVE_PATHCONF)
@@ -8401,6 +8406,7 @@ posix_sysconf(PyObject *self, PyObject *args)
  * it easier to add additional entries to the tables.
  */
 
+#if defined(HAVE_FPATHCONF) || defined(HAVE_PATHCONF) || defined(HAVE_CONFSTR) || defined(HAVE_SYSCONF)
 static int
 cmp_constdefs(const void *v1,  const void *v2)
 {
@@ -8435,6 +8441,7 @@ setup_confname_table(struct constdef *table, size_t tablesize,
     }
     return PyModule_AddObject(module, tablename, d);
 }
+#endif
 
 /* Return -1 on failure, 0 on success. */
 static int
@@ -8891,7 +8898,9 @@ static PyMethodDef posix_methods[] = {
     {"close",           posix_close, METH_VARARGS, posix_close__doc__},
     {"closerange",      posix_closerange, METH_VARARGS, posix_closerange__doc__},
     {"dup",             posix_dup, METH_VARARGS, posix_dup__doc__},
+#ifdef HAVE_DUP2
     {"dup2",            posix_dup2, METH_VARARGS, posix_dup2__doc__},
+#endif
     {"lseek",           posix_lseek, METH_VARARGS, posix_lseek__doc__},
     {"read",            posix_read, METH_VARARGS, posix_read__doc__},
     {"write",           posix_write, METH_VARARGS, posix_write__doc__},

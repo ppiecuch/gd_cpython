@@ -482,12 +482,12 @@
 #define HAVE_GETPEERNAME 1
 
 /* Define to 1 if you have the `getpgid' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_GETPGID 1
 #endif
 
 /* Define to 1 if you have the `getpgrp' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_GETPGRP 1
 #endif
 
@@ -1219,7 +1219,7 @@ typedef _W64 int ssize_t;
 #endif
 
 /* Define to 1 if you have the `utimes' function. */
-#if !defined(MS_WINDOWS) && !defined(__NX__)
+#if !defined(MS_WINDOWS) && !defined(LIMITED_POSIX)
 #define HAVE_UTIMES 1
 #endif
 
