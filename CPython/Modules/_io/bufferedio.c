@@ -919,6 +919,7 @@ _buffered_readline(buffered *self, Py_ssize_t limit)
     Py_ssize_t n, written = 0;
     const char *start, *s, *end;
 
+    PyUnused(written);
     CHECK_CLOSED(self, "readline of closed file")
 
     /* First, try to find a line in the buffer. This can run unlocked because
@@ -1743,6 +1744,8 @@ _bufferedwriter_flush_unlocked(buffered *self)
 {
     Py_ssize_t written = 0;
     Py_off_t n, rewind;
+
+    PyUnused(written);
 
     if (!VALID_WRITE_BUFFER(self) || self->write_pos == self->write_end)
         goto end;
