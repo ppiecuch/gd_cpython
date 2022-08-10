@@ -905,7 +905,7 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def_readonly("pos", &GdEvent::position)
 		.def_readonly("key", &GdEvent::key)
 		.def_readonly("unicode", &GdEvent::unicode)
-		.def("get_pos", [](const GdEvent &e) { return e.position; })
+		.def("get_pos", [](const GdEvent &e) { return Point2(e.position); })
 		.def("update", []() { })
 		.attr("__version__") = VERSION_FULL_CONFIG;
 	m_event.def("set_grab", &event::set_grab);
@@ -975,6 +975,7 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 	m_display.def("set_caption", &display::set_caption);
 	m_display.def("get_surface", &display::get_surface);
 	m_display.def("flip", &display::flip);
+	m_display.def("render_stats", &display::render_stats);
 	// gdgame.draw
 	py::module m_draw = m.def_submodule("draw", "gdgame module for drawing shapes.");
 	m_draw.def("rect", overload_cast_<const GdSurface&, const Color&, const Rect2&, int>()(&draw::rect));

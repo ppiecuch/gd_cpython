@@ -27,6 +27,7 @@
 #include "scene/resources/theme.h"
 #include "common/gd_core.h"
 
+#include <cstdint>
 #include <iostream>
 #include <string>
 #include <memory>
@@ -274,6 +275,37 @@ struct GdDisplaySurface : public GdSurfaceImpl {
 };
 
 // Wrapper around Image/Texture/Sprite object
+
+struct _SurfaceStats {
+#ifdef DEBUG_ENABLED
+	bool _enabled = false;
+	int _create = 0;
+	int _destroy = 0;
+	uint64_t _frame = 0;
+	void enable() { _enabled = true; }
+	void disable() { _enabled = false; }
+	String _stats() const {
+		return vformat("(GdCPython) Surface stats: frame: %d, created: %d, deleted: %d", _frame, _create, _destroy);
+	}
+	void dump() const {
+		if (_enabled) {
+			print_verbose(_stats());
+		}
+	}
+	void next_frame() { _create = _destroy = 0; _frame++; }
+	void new_surf() { _create++; }
+	void del_surf() { _destroy++; }
+#else
+	void enable() const { }
+	void disable() const { }
+	String _stats() const { return ""; }
+	void dump() const { }
+	void next_frame() const { }
+	void new_surf() const { }
+	void del_surf() const { }
+#endif
+} _surf_stats;
+
 struct GdSurface {
 	std::unique_ptr<GdSurfaceImpl> impl;
 	std::vector<RenderLaterCmd> _render_later;
@@ -284,12 +316,14 @@ struct GdSurface {
 	_FORCE_INLINE_ GdTextureSurface *get_as_texture() const { return (GdTextureSurface*)impl.get(); }
 	_FORCE_INLINE_ GdTextSurface *get_as_text() const { return (GdTextSurface*)impl.get(); }
 
-	GdSurface(const GdSurface &surf) :  impl(surf.impl->clone()), _render_later(surf._render_later) { }
-	GdSurface(int surf_width, int surf_height) : impl(std::make_unique<GdColorSurface>(surf_width, surf_height)) { }
-	GdSurface(const std::vector<real_t> surf_size) : impl(std::make_unique<GdColorSurface>(surf_size[0], surf_size[1])) { }
-	GdSurface(const Ref<Font> &font, const String &text, const Color &color) : impl(std::make_unique<GdTextSurface>(font, text, color)) { }
-	GdSurface(const String &filename) : impl(std::make_unique<GdTextureSurface>(filename)) { }
-	GdSurface(int &instance_id) : impl(std::make_unique<GdDisplaySurface>(instance_id)) { }
+	GdSurface(const GdSurface &surf) :  impl(surf.impl->clone()), _render_later(surf._render_later) { _surf_stats.new_surf(); }
+	GdSurface(int surf_width, int surf_height) : impl(std::make_unique<GdColorSurface>(surf_width, surf_height)) { _surf_stats.new_surf(); }
+	GdSurface(const std::vector<real_t> surf_size) : impl(std::make_unique<GdColorSurface>(surf_size[0], surf_size[1])) { _surf_stats.new_surf(); }
+	GdSurface(const Ref<Font> &font, const String &text, const Color &color) : impl(std::make_unique<GdTextSurface>(font, text, color)) { _surf_stats.new_surf(); }
+	GdSurface(const String &filename) : impl(std::make_unique<GdTextureSurface>(filename)) { _surf_stats.new_surf(); }
+	GdSurface(int &instance_id) : impl(std::make_unique<GdDisplaySurface>(instance_id)) { _surf_stats.new_surf(); }
+
+	~GdSurface() { _surf_stats.del_surf(); }
 
 	_FORCE_INLINE_ int get_width() const { ERR_FAIL_NULL_V(impl, 1); return impl->get_width(); }
 	_FORCE_INLINE_ int get_height() const { ERR_FAIL_NULL_V(impl, 1); return impl->get_height(); }
@@ -503,7 +537,8 @@ struct GdEvent {
 			// to avoid gcc problems with Point2 as part of the union
 			struct {
 				real_t x, y;
-				void operator=(const Point2 &pt) { x = pt.x, y = pt.x; }
+				void operator=(const Point2 &pt) { x = pt.x, y = pt.y; }
+				operator Point2() const { return Point2(x, y); }
 			} position;
 			int button;
 		};
@@ -630,6 +665,17 @@ namespace display {
 	void set_caption(const std::string &caption) { OS::get_singleton()->set_window_title(caption.c_str()); }
 	_FORCE_INLINE_ GdSurface get_surface(int instance_id) { return GdSurface(instance_id); }
 	_FORCE_INLINE_ void flip(int instance_id) {
+		_surf_stats.dump();
+		_surf_stats.next_frame();
+	}
+	_FORCE_INLINE_ void render_stats(bool state) {
+		if (state) {
+			_surf_stats.enable();
+		} else {
+			_surf_stats.disable();
+		}
+	}
+	_FORCE_INLINE_ void mirror(int instance_id) {
 		if (Object *owner = ObjectDB::get_instance(instance_id)) {
 			if (Node2D *canvas = Object::cast_to<Node2D>(owner)) {
 				canvas->set_rotation_degrees(180);
