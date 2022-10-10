@@ -134,7 +134,7 @@ static PYFILE gd_stdin;
 static PYFILE gd_stdout;
 static PYFILE gd_stderr;
 
-handle_map<PYFILE*> _handles(1, 32);
+static handle_map<PYFILE*> _handles(1, 32);
 
 int _gd_open(const char* name, int flags, ...) {
 	PYFILE *f = PYFILE::fopen(name, flags);

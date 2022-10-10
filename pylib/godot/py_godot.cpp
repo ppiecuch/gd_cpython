@@ -536,6 +536,8 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def("min", [](const Vector2 &v, const Vector2 &arg) { return v.min(arg); })
 		.def("max", [](const Vector2 &v, const Vector2 &arg) { return v.max(arg); })
 		.def("positive", [](const Vector2 &v) { return v.x >= 0 && v.y >= 0; })
+		.def("offset", [](const Vector2 &v, real_t ox, real_t oy) { return Vector2(v.x + ox, v.y + oy); })
+		.def("offset", [](const Vector2 &v, real_t ov) { return Vector2(v.x + ov, v.y + ov); })
 		.def(py::self + py::self)
 		.def(py::self += py::self)
 		.def(py::self - py::self)
@@ -731,6 +733,15 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def(py::self < py::self)
 		.def(py::self *= real_t())
 		.def(py::self /= real_t())
+		.def("get_tuple", [](const Color &c) { return std::make_tuple(c.r, c.g, c.b, c.a); })
+		.def_static("from_tuple", [](const std::vector<int> &args) {
+			switch(args.size()) {
+				case 1: return Color::solid(args[0] / 255.0);
+				case 3: return Color(args[0] / 255.0, args[1] / 255.0, args[2] / 255.0);
+				case 4: return Color(args[0] / 255.0, args[1] / 255.0, args[2] / 255.0, args[3] / 255.0);
+				default: return Color();
+			}
+		})
 		.def("__copy__", [](const Color &c){ return Color(c); })
 		.def("__repr__", [](const Color &c) { return std::str(vformat("Color%s", c)); })
 		.def("__getitem__", [](const Color &c, int index) { return c[index]; })
