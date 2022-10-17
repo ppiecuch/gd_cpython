@@ -579,7 +579,7 @@ namespace utils {
 	}
 
 	real_t lin_ipol(real_t value, real_t a, real_t b, real_t begin = 0, real_t end = 1.0) {
-		return Math::map(value, a, b, begin, end);
+		return Math::map1(value, a, b, begin, end);
 	}
 	std::tuple<int, int> get_instance_size(int instance_id) {
 		if (Object *owner = ObjectDB::get_instance(instance_id)) {

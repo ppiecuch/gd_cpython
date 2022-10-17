@@ -295,6 +295,11 @@ static Ref<BitmapFont> make_font_from_hstrip(const String &p_font_path, const St
 	return font;
 }
 
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
+#endif
+
 static bool play_sound(Node *p_owner, Ref<AudioStream> p_sound) {
 	ERR_FAIL_NULL_V(p_owner, false);
 	ERR_FAIL_NULL_V(p_sound, false);
@@ -348,6 +353,9 @@ static bool play_sound(Node *p_owner, Ref<AudioStream> p_sound) {
 	return true;
 }
 
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
 void GdSound::set_volume(real_t vol) { }
 void GdSound::play(bool loop) { }
@@ -509,7 +517,7 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 	m_math.def("make_half_float", &Math::make_half_float);
 	m_math.def("snap_scalar", &Math::snap_scalar);
 	m_math.def("snap_scalar_separation", &Math::snap_scalar_separation);
-	m_math.def("map", &Math::map);
+	m_math.def("map", &Math::map1);
 	// gdgame.core
 	py::module m_core = m.def_submodule("core", "gdgame module with Godot core definitions.");
 	py::class_<String>(m_core, "String")

@@ -1,6 +1,6 @@
 
 def can_build(env, platform):
-    return env["tools"] or env["module_gd_cpython_enabled"]
+    return True
 
 
 def configure(env):
