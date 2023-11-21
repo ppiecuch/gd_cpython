@@ -416,6 +416,8 @@ bool GdFont::load(const std::string &path, int size, int outline_size, Color out
 
 // gdgame:
 //  +--core
+//     +-String
+//     +-Dict
 //     +-Vector2
 //     +-Vector3
 //     +-Rect2
@@ -433,6 +435,7 @@ bool GdFont::load(const std::string &path, int size, int outline_size, Color out
 //  +--time
 //  +--mixer
 //  +--font
+//  +--net
 //
 
 PYBIND11_EMBEDDED_MODULE(gdgame, m) {
@@ -532,6 +535,18 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def(py::self += py::self)
 		.def("__repr__", [](const String &s) { return std::str(s); })
 		.def("__copy__", [](const String &s){ return String(s); })
+		.attr("__version__") = VERSION_FULL_CONFIG;
+	py::class_<Dictionary>(m_core, "Dict")
+		.def("size", &Dictionary::size)
+		.def("has", [](const Dictionary &v, int index) { return v.has(index); })
+		.def("has", [](const Dictionary &v, const std::string &index) { return v.has(index.c_str()); })
+		.def("erase", [](Dictionary &v, int index) { return v.erase(index); })
+		.def("erase", [](Dictionary &v, const std::string &index) { return v.erase(index.c_str()); })
+		.def("clear", &Dictionary::clear)
+		.def("__repr__", [](const Dictionary &d) { return std::str(vformat("%s", d)); })
+		.def("__copy__", [](const Dictionary &d){ return Dictionary(d); })
+		.def("__getitem__", [](const Dictionary &v, int index) { return v[index]; })
+		.def("__getitem__", [](const Dictionary &v, const std::string &index) { return v[index.c_str()]; })
 		.attr("__version__") = VERSION_FULL_CONFIG;
 	py::class_<Vector2>(m_core, "Vector2")
 		.def(py::init<real_t, real_t>())
@@ -711,7 +726,7 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.def("get_s", &Color::get_s)
 		.def("get_v", &Color::get_v)
 		.def("set_hsv", &Color::set_hsv)
-		.def("with_alpha", &Color::with_alpha)
+		.def("with_alpha", [](const Color &c, float a) { return c.with_alpha(a); })
 		.def("is_equal_approx", &Color::is_equal_approx)
 		.def("invert", &Color::invert)
 		.def("contrast", &Color::contrast)
@@ -1020,6 +1035,12 @@ PYBIND11_EMBEDDED_MODULE(gdgame, m) {
 		.attr("__version__") = VERSION_FULL_CONFIG;
 	m_font.def("init", []() { });
 	m_font.def("quit", []() { });
+	// gdgame.net
+	py::module m_net = m.def_submodule("net", "Network components and services.");
+	m_info.attr("STATUS_UNKNOWN") = 0;
+	m_info.attr("STATUS_WAITING") = 1;
+	m_info.attr("STATUS_READY") = 2;
+	m_info.attr("STATUS_ERROR") = 3;
 }
 
 // END

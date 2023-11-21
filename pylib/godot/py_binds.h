@@ -686,9 +686,16 @@ namespace display {
 	}
 } // display
 
+// https://stackoverflow.com/questions/231767/what-does-the-yield-keyword-do
 namespace network {
+	// local multiplyer
 	std::vector<uint64_t> get_peers();
 	std::string get_peer_name(uint64_t peer_id);
+	// leaderboards
+	bool request_leaderboard(const std::string &ld_name);
+	std::vector<Dictionary> get_leaderboard(const std::string &ld_name);
+	int get_leaderboard_request_status();
+	bool add_score(const std::string &score);
 } // network
 
 #endif // PY_BINDS_H

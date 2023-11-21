@@ -19,34 +19,34 @@
 
 enum ExModeFlags {
 
-	EX_CREATE = 256, // highr values than FileAccess::ModeFlags
-	EX_APPEND = 512,
+	EX_MODE_CREATE = 256, // highe values than FileAccess::ModeFlags
+	EX_MODE_APPEND = 512,
 };
 
 static DirAccess *_current_dir = nullptr;
 
 static int _conv_perm(const String &p_path, int mode) {
-    // Convert permissions
-    int flags = 0;
-    if (mode & O_RDONLY) {
+	// Convert permissions
+	int flags = 0;
+	if (mode & O_RDONLY) {
 		flags = FileAccess::READ;
-    } else if (mode & O_WRONLY) {
-        flags = FileAccess::WRITE;
-    }
+	} else if (mode & O_WRONLY) {
+		flags = FileAccess::WRITE;
+	}
 
-    if (mode & O_APPEND) {
+	if (mode & O_APPEND) {
 		if (FileAccess::exists(p_path)) {
-			flags = FileAccess::READ_WRITE | EX_APPEND;
+			flags = FileAccess::READ_WRITE | EX_MODE_APPEND;
 		} else {
 			flags = FileAccess::WRITE_READ;
 		}
-    }
+	}
 
-    if (flags == 0) {
-        flags = FileAccess::READ; // default
-    }
+	if (flags == 0) {
+		flags = FileAccess::READ; // default
+	}
 
-    return flags;
+	return flags;
 }
 
 static int _conv_perm(const String &p_path, const String &mode) {
@@ -64,7 +64,7 @@ static int _conv_perm(const String &p_path, const String &mode) {
 
 	if (check("a")) {
 		if (FileAccess::exists(p_path)) {
-			flags = FileAccess::READ_WRITE | EX_APPEND;
+			flags = FileAccess::READ_WRITE | EX_MODE_APPEND;
 		} else {
 			flags = FileAccess::WRITE_READ;
 		}
@@ -92,7 +92,7 @@ struct PYFILE {
 			const String real_path = fixpath(p_path);
 			const int flags = _conv_perm(real_path, p_mode_flags);
 			if (FileAccess *_fa = FileAccess::open(real_path, flags&0xff)) {
-				if (flags & EX_APPEND) {
+				if (flags & EX_MODE_APPEND) {
 					_fa->seek_end();
 				}
 				return memnew(PYFILE(_fa));
@@ -107,7 +107,7 @@ struct PYFILE {
 			const String real_path = fixpath(p_path);
 			const int flags = _conv_perm(real_path, p_mode_flags);
 			if (FileAccess *_fa = FileAccess::open(real_path, flags&0xff)) {
-				if (flags & EX_APPEND) {
+				if (flags & EX_MODE_APPEND) {
 					_fa->seek_end();
 				}
 				return memnew(PYFILE(_fa));
